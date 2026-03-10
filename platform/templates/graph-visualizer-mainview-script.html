@@ -1,0 +1,327 @@
+<script>
+(function () {
+  'use strict';
+
+  const MIN_K = 0.08, MAX_K = 6, STEP = 0.2;
+  let WORLD = 2000;
+
+  const state = {
+    svg: null, sim: null, innerG: null,
+    k: 1, tx: 0, ty: 0,
+    isPanning: false, panX: 0, panY: 0,
+    pinchDist: null,
+    isDraggingNode: false,
+    lastPinnedNode: null,
+    selectedId: null,
+  };
+
+  const root    = document.getElementById('main-view');
+  const canvas  = document.getElementById('canvas');
+  const tooltip = document.getElementById('tooltip');
+
+  function screenToWorld(sx, sy) {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: (sx - r.left - state.tx) / state.k,
+      y: (sy - r.top  - state.ty) / state.k,
+    };
+  }
+
+  function applyT() {
+    if (state.innerG)
+      state.innerG.setAttribute('transform',
+        `translate(${state.tx},${state.ty}) scale(${state.k})`);
+  }
+
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  function zoomAt(delta, px, py) {
+    const newK = clamp(state.k * (1 + delta), MIN_K, MAX_K);
+    const r    = newK / state.k;
+    state.tx   = px - r * (px - state.tx);
+    state.ty   = py - r * (py - state.ty);
+    state.k    = newK;
+    applyT();
+  }
+
+  function selectNode(d) {
+    if (!state.svg) return;
+
+    if (d !== null && state.selectedId === d.id) return;
+
+    d3.select(state.svg).selectAll('.node, .gv-node').classed('gv-selected', false);
+
+    if (d === null) {
+      state.selectedId = null;
+      root.dispatchEvent(new CustomEvent('gv:select', {
+        detail: { id: null },
+        bubbles: true,
+      }));
+      return;
+    }
+
+    state.selectedId = d.id;
+
+    d3.select(state.svg)
+      .selectAll('.node, .gv-node')
+      .filter(n => n && n.id === d.id)
+      .classed('gv-selected', true);
+
+    root.dispatchEvent(new CustomEvent('gv:select', {
+      detail: { id: d.id, node: d },
+      bubbles: true,
+    }));
+  }
+
+  function attachDrag() {
+    if (!window.d3 || !state.svg) return;
+    const sim = state.sim;
+
+    const drag = d3.drag()
+      .on('start', function (event, d) {
+        state.isDraggingNode = true;
+
+        hideTip();
+
+        selectNode(d);
+
+        if (state.lastPinnedNode && state.lastPinnedNode !== d) {
+          state.lastPinnedNode.fx = null;
+          state.lastPinnedNode.fy = null;
+        }
+
+        if (sim) sim.alphaTarget(0.3).restart();
+
+        const w = screenToWorld(event.sourceEvent.clientX, event.sourceEvent.clientY);
+        d._dragOffsetX = d.x - w.x;
+        d._dragOffsetY = d.y - w.y;
+        d.fx = d.x;
+        d.fy = d.y;
+
+        d3.select(this).classed('gv-dragging-node', true);
+        canvas.style.cursor = 'grabbing';
+      })
+      .on('drag', function (event, d) {
+        const w = screenToWorld(event.sourceEvent.clientX, event.sourceEvent.clientY);
+        const half = WORLD / 2;
+        const hw = d._hw || 0;
+        const hh = d._hh || 0;
+        d.fx = clamp(w.x + d._dragOffsetX, -half + hw, half - hw);
+        d.fy = clamp(w.y + d._dragOffsetY, -half + hh, half - hh);
+      })
+      .on('end', function (event, d) {
+        state.isDraggingNode = false;
+        if (sim && !event.active) sim.alphaTarget(0);
+        state.lastPinnedNode = d;
+        d._dragOffsetX = 0;
+        d._dragOffsetY = 0;
+        d3.select(this).classed('gv-dragging-node', false);
+        canvas.style.cursor = 'grab';
+
+        const el = this;
+        const src = event.sourceEvent;
+        const under = document.elementFromPoint(src.clientX, src.clientY);
+        if (under && (under === el || el.contains(under))) {
+          showTip(src, d);
+        } else {
+          hideTip();
+        }
+      });
+
+    d3.select(state.svg)
+      .selectAll('.node, .gv-node')
+      .call(drag)
+      .on('mouseover', (event, d) => showTip(event, d))
+      .on('mouseout',  ()          => hideTip());
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (state.isDraggingNode) return;
+    if (e.target.closest('.node, .gv-node')) return;
+    state.isPanning = true;
+    state.panX = e.clientX - state.tx;
+    state.panY = e.clientY - state.ty;
+    canvas.classList.add('gv-panning');
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!state.isPanning) return;
+    state.tx = e.clientX - state.panX;
+    state.ty = e.clientY - state.panY;
+    applyT();
+  });
+
+  window.addEventListener('mouseup', () => {
+    state.isPanning = false;
+    canvas.classList.remove('gv-panning');
+  });
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    zoomAt(-e.deltaY * 0.001, e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      state.pinchDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && state.pinchDist !== null) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const r  = canvas.getBoundingClientRect();
+      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
+      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+      zoomAt((dist - state.pinchDist) / state.pinchDist, cx, cy);
+      state.pinchDist = dist;
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', () => { state.pinchDist = null; });
+
+  function showTip(event, d) {
+    if (!d || state.isDraggingNode) return;
+    const lines = [];
+    if (d.id    != null) lines.push(`id: ${d.id}`);
+    if (d.label != null) lines.push(`label: ${d.label}`);
+    if (d.name  != null) lines.push(`name: ${d.name}`);
+    if (d.type  != null) lines.push(`type: ${d.type}`);
+    if (d.group != null) lines.push(`group: ${d.group}`);
+    if (!lines.length) return;
+    tooltip.textContent = lines.join('\n');
+    tooltip.classList.add('gv-visible');
+    moveTip(event);
+  }
+  function hideTip() { tooltip.classList.remove('gv-visible'); }
+  function moveTip(e) {
+    const r = root.getBoundingClientRect();
+    tooltip.style.left = (e.clientX - r.left + 14) + 'px';
+    tooltip.style.top  = (e.clientY - r.top  - 10) + 'px';
+  }
+  window.addEventListener('mousemove', (e) => {
+    if (!state.isPanning) moveTip(e);
+  });
+
+  function fit() {
+    if (!state.innerG) return;
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
+    const bb = state.innerG.getBBox();
+    if (!bb.width || !bb.height) return;
+    const pad = 40;
+    state.k  = clamp(Math.min((cw - pad*2) / bb.width, (ch - pad*2) / bb.height), MIN_K, MAX_K);
+    state.tx = cw/2 - state.k * (bb.x + bb.width/2);
+    state.ty = ch/2 - state.k * (bb.y + bb.height/2);
+    applyT();
+  }
+
+  window.GraphVisualizer = {
+    mount(svgEl, simulation) {
+      if (state.svg) state.svg.remove();
+      state.svg = svgEl;
+      state.sim = simulation || null;
+      state.selectedId = null;
+
+      const nodeCount = simulation ? simulation.nodes().length : 10;
+      WORLD = Math.max(1200, nodeCount * 180);
+
+      svgEl.removeAttribute('width');
+      svgEl.removeAttribute('height');
+      svgEl.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible';
+
+      let g = svgEl.querySelector('g.gv-inner');
+      if (!g) {
+        g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.classList.add('gv-inner');
+        while (svgEl.firstChild) g.appendChild(svgEl.firstChild);
+        svgEl.appendChild(g);
+      }
+      state.innerG = g;
+
+      const existing = svgEl.querySelector('.gv-world-border');
+      if (existing) existing.remove();
+      const border = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      border.classList.add('gv-world-border');
+      border.setAttribute('x', -WORLD/2);
+      border.setAttribute('y', -WORLD/2);
+      border.setAttribute('width', WORLD);
+      border.setAttribute('height', WORLD);
+      border.setAttribute('fill', 'none');
+      border.setAttribute('stroke', '#d0bfa0');
+      border.setAttribute('stroke-width', '1');
+      border.setAttribute('stroke-dasharray', '6 4');
+      border.setAttribute('pointer-events', 'none');
+      g.insertBefore(border, g.firstChild);
+
+      canvas.appendChild(svgEl);
+
+      function measureNodes() {
+        d3.select(svgEl).selectAll('.node, .gv-node').each(function(d) {
+          if (!d) return;
+          try {
+            const bb = this.getBBox();
+            // half-extents od centra čvora
+            d._hw = bb.width  / 2;
+            d._hh = bb.height / 2;
+          } catch(e) {
+            d._hw = 40;
+            d._hh = 40;
+          }
+        });
+      }
+
+      if (simulation) {
+        simulation.on('tick.gv-bounds', () => {
+          const half = WORLD / 2;
+          simulation.nodes().forEach(n => {
+            const hw = n._hw || 0;
+            const hh = n._hh || 0;
+            n.x = clamp(n.x, -half + hw, half - hw);
+            n.y = clamp(n.y, -half + hh, half - hh);
+            if (n.fx != null) n.fx = clamp(n.fx, -half + hw, half - hw);
+            if (n.fy != null) n.fy = clamp(n.fy, -half + hh, half - hh);
+          });
+        });
+      }
+
+      attachDrag();
+
+      setTimeout(() => { measureNodes(); fit(); }, 80);
+    },
+
+    refresh() { attachDrag(); measureNodes(); },
+    fit,
+
+    select(id) {
+      if (!state.svg) return;
+      let found = null;
+      d3.select(state.svg).selectAll('.node, .gv-node').each((d) => {
+        if (d && d.id === id) found = d;
+      });
+      selectNode(found);
+    },
+
+    zoom: {
+      in:    () => { const r = canvas.getBoundingClientRect(); zoomAt( STEP, r.width/2, r.height/2); },
+      out:   () => { const r = canvas.getBoundingClientRect(); zoomAt(-STEP, r.width/2, r.height/2); },
+      to:    (k) => { state.k = clamp(k, MIN_K, MAX_K); applyT(); },
+      reset: () => { state.k=1; state.tx=0; state.ty=0; applyT(); },
+    },
+
+    getTransform() { return { k: state.k, tx: state.tx, ty: state.ty }; },
+    worldSize: WORLD,
+  };
+
+  applyT();
+})();
+</script>
