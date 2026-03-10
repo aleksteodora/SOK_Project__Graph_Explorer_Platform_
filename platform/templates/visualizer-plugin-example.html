@@ -1,0 +1,96 @@
+<script>
+(function () {
+
+  const nodes = [
+    { id: 1, name: "Server",      type: "core",    ip: "10.0.0.1" },
+    { id: 2, name: "AuthService", type: "service", ip: "10.0.0.2" },
+    { id: 3, name: "Database",    type: "storage", ip: "10.0.0.3" },
+    { id: 4, name: "CacheLayer",  type: "storage", ip: "10.0.0.4" },
+    { id: 5, name: "Worker",      type: "worker",  ip: "10.0.0.5" },
+    { id: 6, name: "Queue",       type: "queue",   ip: "10.0.0.6" },
+  ];
+
+  const links = [
+    { source: 1, target: 2 },
+    { source: 1, target: 5 },
+    { source: 2, target: 3 },
+    { source: 2, target: 4 },
+    { source: 5, target: 6 },
+    { source: 6, target: 1 },
+  ];
+
+  const W = 140, H = 78, PAD = 10, LINE_H = 18;
+
+  const svg = d3.create("svg");
+
+  const sim = d3.forceSimulation(nodes)
+    .force("link",    d3.forceLink(links).id(d => d.id).distance(160))
+    .force("charge",  d3.forceManyBody().strength(-500))
+    .force("collide", d3.forceCollide(100));
+
+  const link = svg.append("g")
+    .selectAll("line")
+    .data(links)
+    .join("line")
+      .attr("class", "link")
+      .attr("stroke-width", 1.5)
+      .attr("stroke-opacity", 0.6);
+
+  const node = svg.append("g")
+    .selectAll("g")
+    .data(nodes)
+    .join("g")
+      .attr("class", "node"); // <-- IMPORTANT
+
+  node.append("rect")
+    .attr("x", -W/2).attr("y", -H/2)
+    .attr("width", W).attr("height", H)
+    .attr("rx", 8).attr("ry", 8)
+    .attr("stroke-width", 1.5);
+
+  node.append("clipPath")
+    .attr("id", d => `clip-${d.id}`)
+    .append("rect")
+      .attr("x", -W/2 + PAD).attr("y", -H/2 + PAD)
+      .attr("width", W - PAD*2).attr("height", H - PAD*2);
+
+  const textG = node.append("g")
+    .attr("clip-path", d => `url(#clip-${d.id})`);
+
+  textG.append("text")
+    .attr("x", -W/2 + PAD)
+    .attr("y", -H/2 + PAD + 12)
+    .attr("text-anchor", "start")
+    .attr("dominant-baseline", "auto")
+    .attr("font-size", 12)
+    .attr("font-weight", "700")
+    .text(d => d.name);
+
+  textG.append("text")
+    .attr("x", -W/2 + PAD)
+    .attr("y", -H/2 + PAD + 12 + LINE_H)
+    .attr("text-anchor", "start")
+    .attr("dominant-baseline", "auto")
+    .attr("font-size", 11)
+    .text(d => "type: " + d.type);
+
+  textG.append("text")
+    .attr("x", -W/2 + PAD)
+    .attr("y", -H/2 + PAD + 12 + LINE_H*2)
+    .attr("text-anchor", "start")
+    .attr("dominant-baseline", "auto")
+    .attr("font-size", 11)
+    .text(d => "ip: " + d.ip);
+
+  sim.on("tick", () => {
+    link
+      .attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+
+    node.attr("transform", d => `translate(${d.x},${d.y})`);
+  });
+
+  GraphVisualizer.mount(svg.node(), sim); // <-- IMPORTANT
+
+})();
+</script>
