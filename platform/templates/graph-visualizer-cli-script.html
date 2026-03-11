@@ -33,7 +33,6 @@
     log.scrollTop = log.scrollHeight;
   }
 
-  // --- Ucitaj istoriju sa backenda ---
   fetch(FETCH_MESSAGES_URL).then(function(r) {
     return r.json();
   }).then(function(messages) {
@@ -41,10 +40,9 @@
       addEntry(messages[i].text, messages[i].type || "cli-out");
     }
   }).catch(function() {
-    addEntry("Greska pri ucitavanju istorije.", "cli-err");
+    addEntry("Error while loading past messages", "cli-err");
   });
 
-  // --- Posalji poruku ---
   function send() {
     var msg = input.value.trim();
     if (!msg) return;
@@ -65,7 +63,7 @@
         addEntry(data.response, "cli-out");
       }
     }).catch(function() {
-      addEntry("Greska pri slanju poruke.", "cli-err");
+      addEntry("Error while sending message", "cli-err");
     });
   }
 
