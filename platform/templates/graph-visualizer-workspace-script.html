@@ -54,12 +54,12 @@
       body: JSON.stringify(body)
     }).then(function(res) {
       if (res.ok) {
-        showFeedback(feedback, "Sacuvano", false);
+        showFeedback(feedback, "Saved", false);
       } else {
-        showFeedback(feedback, "Greska pri slanju", true);
+        showFeedback(feedback, "Error while sending", true);
       }
     }).catch(function() {
-      showFeedback(feedback, "Greska pri slanju", true);
+      showFeedback(feedback, "Error while sending", true);
     });
   }
 
@@ -92,9 +92,9 @@
     var filename = document.getElementById("wm-filename").value.trim();
     var feedback = document.getElementById("wm-fb-create");
 
-    if (!name)     { showFeedback(feedback, "Unesi naziv workspace-a", true); return; }
+    if (!name)     { showFeedback(feedback, "Enter workspace name", true); return; }
     if (!pluginId) { showFeedback(feedback, "Select plugin", true); return; }
-    if (!filename) { showFeedback(feedback, "Unesi naziv fajla", true); return; }
+    if (!filename) { showFeedback(feedback, "Enter file name", true); return; }
 
     post(POST_CREATE_URL, { name: name, plugin_id: pluginId, filename: filename }, feedback);
   });
