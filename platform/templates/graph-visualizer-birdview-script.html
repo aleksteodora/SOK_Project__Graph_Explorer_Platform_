@@ -1,0 +1,213 @@
+<script>
+(function () {
+  'use strict';
+
+  const birdRoot = document.getElementById('bird-view');
+  const birdSvg  = document.getElementById('bird-svg');
+
+  let WORLD      = 2000;
+  let simulation = null;
+  let linkData   = [];
+  let linkG      = null;
+  let nodeG      = null;
+  let viewportRect = null;
+  let selectedId = null;
+
+  const panState = { active: false };
+
+  function updateViewBox() {
+    const half = WORLD / 2;
+    const pad  = WORLD * 0.05;
+    birdSvg.setAttribute('viewBox',
+      `${-half - pad} ${-half - pad} ${WORLD + pad * 2} ${WORLD + pad * 2}`);
+    birdSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  }
+
+  function updateViewport(detail) {
+    if (!viewportRect) return;
+    const gv = window.GraphVisualizer;
+    if (!gv) return;
+
+    const t  = detail || gv.getTransform();
+    const el = document.getElementById('canvas');
+    if (!el) return;
+
+    const cw = el.clientWidth;
+    const ch = el.clientHeight;
+
+    const x = -t.tx / t.k;
+    const y = -t.ty / t.k;
+    const w =  cw   / t.k;
+    const h =  ch   / t.k;
+
+    viewportRect.setAttribute('x', x);
+    viewportRect.setAttribute('y', y);
+    viewportRect.setAttribute('width',  w);
+    viewportRect.setAttribute('height', h);
+  }
+
+  function redraw() {
+    if (!simulation || !nodeG || !linkG) return;
+
+    const nodes = simulation.nodes();
+    const nSize = Math.max(12, WORLD * 0.025);
+    const nH    = nSize * 0.65;
+    const nR    = nSize * 0.15;
+
+    const ln = d3.select(linkG)
+      .selectAll('.bv-link')
+      .data(linkData, (d, i) => i);
+
+    ln.enter()
+      .append('line')
+      .attr('class', 'bv-link')
+      .merge(ln)
+      .attr('x1', d => (typeof d.source === 'object' ? d.source.x : 0) || 0)
+      .attr('y1', d => (typeof d.source === 'object' ? d.source.y : 0) || 0)
+      .attr('x2', d => (typeof d.target === 'object' ? d.target.x : 0) || 0)
+      .attr('y2', d => (typeof d.target === 'object' ? d.target.y : 0) || 0);
+
+    ln.exit().remove();
+
+    const nd = d3.select(nodeG)
+      .selectAll('.bv-node')
+      .data(nodes, d => d.id);
+
+    nd.enter()
+      .append('rect')
+      .attr('class', 'bv-node')
+      .attr('width',  nSize)
+      .attr('height', nH)
+      .attr('rx', nR)
+      .attr('ry', nR)
+      .merge(nd)
+      .attr('x', d => (d.x || 0) - nSize / 2)
+      .attr('y', d => (d.y || 0) - nH   / 2)
+      .classed('bv-selected', d => d.id === selectedId);
+
+    nd.exit().remove();
+
+    updateViewport();
+  }
+
+  /* --- click / drag on bird view to pan main view --- */
+
+  function birdToWorld(clientX, clientY) {
+    const pt  = birdSvg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const ctm = birdSvg.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    const wp  = pt.matrixTransform(ctm.inverse());
+    return { x: wp.x, y: wp.y };
+  }
+
+  function panMainTo(wx, wy) {
+    const gv = window.GraphVisualizer;
+    if (!gv || !gv.setTransform) return;
+    const t  = gv.getTransform();
+    const el = document.getElementById('canvas');
+    if (!el) return;
+    const cw = el.clientWidth;
+    const ch = el.clientHeight;
+    gv.setTransform(t.k, cw / 2 - t.k * wx, ch / 2 - t.k * wy);
+  }
+
+  birdRoot.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const w = birdToWorld(e.clientX, e.clientY);
+    panMainTo(w.x, w.y);
+    panState.active = true;
+    birdRoot.style.cursor = 'grabbing';
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!panState.active) return;
+    const w = birdToWorld(e.clientX, e.clientY);
+    panMainTo(w.x, w.y);
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (panState.active) {
+      panState.active = false;
+      birdRoot.style.cursor = '';
+    }
+  });
+
+  birdRoot.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const gv = window.GraphVisualizer;
+    if (!gv || !gv.zoom) return;
+    if (e.deltaY < 0) {
+      gv.zoom.in();
+    } else {
+      gv.zoom.out();
+    }
+  }, { passive: false });
+
+  /* --- listen for main-view events --- */
+
+  const mainView = document.getElementById('main-view');
+
+  if (mainView) {
+    mainView.addEventListener('gv:transform', (e) => {
+      updateViewport(e.detail);
+    });
+
+    mainView.addEventListener('gv:select', (e) => {
+      selectedId = e.detail.id;
+      if (nodeG) {
+        d3.select(nodeG)
+          .selectAll('.bv-node')
+          .classed('bv-selected', d => d.id === selectedId);
+      }
+    });
+  }
+
+  /* --- public methods --- */
+
+  window.GraphBirdView = {
+    mount(sim, links) {
+      simulation = sim;
+      linkData   = links || [];
+
+      const gv = window.GraphVisualizer;
+      WORLD = (gv && gv.worldSize) || 2000;
+
+      while (birdSvg.firstChild) birdSvg.removeChild(birdSvg.firstChild);
+
+      updateViewBox();
+
+      const half   = WORLD / 2;
+      const border = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      border.classList.add('bv-world-border');
+      border.setAttribute('x', -half);
+      border.setAttribute('y', -half);
+      border.setAttribute('width',  WORLD);
+      border.setAttribute('height', WORLD);
+      birdSvg.appendChild(border);
+
+      linkG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      birdSvg.appendChild(linkG);
+
+      nodeG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      birdSvg.appendChild(nodeG);
+
+      viewportRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      viewportRect.classList.add('bv-viewport');
+      birdSvg.appendChild(viewportRect);
+
+      if (sim) {
+        sim.on('tick.bv', redraw);
+      }
+
+      setTimeout(redraw, 100);
+    },
+
+    refresh() { redraw(); },
+  };
+
+})();
+</script>

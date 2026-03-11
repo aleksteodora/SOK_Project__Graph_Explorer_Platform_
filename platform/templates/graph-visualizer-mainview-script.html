@@ -31,6 +31,10 @@
     if (state.innerG)
       state.innerG.setAttribute('transform',
         `translate(${state.tx},${state.ty}) scale(${state.k})`);
+    root.dispatchEvent(new CustomEvent('gv:transform', {
+      detail: { k: state.k, tx: state.tx, ty: state.ty },
+      bubbles: true,
+    }));
   }
 
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -311,6 +315,13 @@
       selectNode(found);
     },
 
+    setTransform(k, tx, ty) {
+      state.k  = clamp(k, MIN_K, MAX_K);
+      state.tx = tx;
+      state.ty = ty;
+      applyT();
+    },
+
     zoom: {
       in:    () => { const r = canvas.getBoundingClientRect(); zoomAt( STEP, r.width/2, r.height/2); },
       out:   () => { const r = canvas.getBoundingClientRect(); zoomAt(-STEP, r.width/2, r.height/2); },
@@ -319,7 +330,7 @@
     },
 
     getTransform() { return { k: state.k, tx: state.tx, ty: state.ty }; },
-    worldSize: WORLD,
+    get worldSize() { return WORLD; },
   };
 
   applyT();

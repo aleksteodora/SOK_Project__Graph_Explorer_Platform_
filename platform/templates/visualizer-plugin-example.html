@@ -92,5 +92,7 @@
 
   GraphVisualizer.mount(svg.node(), sim); // <-- IMPORTANT
 
+  if (window.GraphBirdView) GraphBirdView.mount(sim, links);
+
 })();
 </script>
