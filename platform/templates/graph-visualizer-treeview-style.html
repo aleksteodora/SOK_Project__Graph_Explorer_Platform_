@@ -1,0 +1,129 @@
+<style>
+#tree-view *, #tree-view *::before, #tree-view *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+#tree-view {
+  --bg:       #ffffff;
+  --border:   #e0d0b0;
+  --accent:   #e8720c;
+  --accent2:  #c95a00;
+  --text:     #2a1f0a;
+  --text-dim: #8a6a3a;
+  --hover-bg: #fdf3e6;
+  --sel-bg:   #fce8d0;
+  --radius:   6px;
+  --font:     'JetBrains Mono', 'Fira Code', monospace;
+
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  width: 220px;
+  height: 300px;
+  background: var(--bg);
+  font-family: var(--font), serif;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  user-select: none;
+  z-index: 10;
+  box-shadow: 0 2px 10px rgba(0,0,0,.12);
+}
+
+#tree-view-content {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 6px 0;
+}
+
+/* scrollbar */
+#tree-view-content::-webkit-scrollbar { width: 6px; }
+#tree-view-content::-webkit-scrollbar-track { background: transparent; }
+#tree-view-content::-webkit-scrollbar-thumb {
+  background: #d0bfa0;
+  border-radius: 3px;
+}
+#tree-view-content::-webkit-scrollbar-thumb:hover { background: #b8a080; }
+
+/* tree item row */
+.tv-item {
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding-right: 8px;
+  cursor: pointer;
+  color: var(--text);
+  transition: background .1s;
+  white-space: nowrap;
+}
+.tv-item:hover {
+  background: var(--hover-bg);
+}
+.tv-item.tv-selected {
+  background: var(--sel-bg);
+  color: var(--accent2);
+  font-weight: 600;
+}
+
+/* chevron toggle */
+.tv-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 26px;
+  flex-shrink: 0;
+  color: var(--text-dim);
+  transition: transform .15s;
+}
+.tv-toggle svg {
+  width: 10px;
+  height: 10px;
+  fill: currentColor;
+}
+.tv-toggle.tv-expanded svg {
+  transform: rotate(90deg);
+}
+.tv-toggle.tv-leaf {
+  visibility: hidden;
+}
+
+/* node icon */
+.tv-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 5px;
+  flex-shrink: 0;
+}
+.tv-icon-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.tv-item.tv-selected .tv-icon-dot {
+  background: var(--accent2);
+  box-shadow: 0 0 4px rgba(232,114,12,.5);
+}
+
+/* label */
+.tv-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  font-size: 12px;
+  line-height: 26px;
+}
+
+/* children container */
+.tv-children {
+  display: none;
+}
+.tv-children.tv-open {
+  display: block;
+}
+</style>

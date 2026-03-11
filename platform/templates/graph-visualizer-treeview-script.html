@@ -1,0 +1,183 @@
+<script>
+(function () {
+  'use strict';
+
+  const container = document.getElementById('tree-view-content');
+  let selectedId  = null;
+  let nodeMap     = {};
+
+  const CHEVRON = '<svg viewBox="0 0 10 10"><path d="M3 1l4 4-4 4"/></svg>';
+
+  const rendered = new Set();
+
+  function buildTree(nodes, links) {
+    const byId     = {};
+    const children  = {};
+    const hasParent = new Set();
+
+    nodes.forEach(n => {
+      byId[n.id] = n;
+      children[n.id] = [];
+    });
+
+    links.forEach(l => {
+      const sid = typeof l.source === 'object' ? l.source.id : l.source;
+      const tid = typeof l.target === 'object' ? l.target.id : l.target;
+      if (byId[sid] && byId[tid]) {
+        children[sid].push(tid);
+        hasParent.add(tid);
+      }
+    });
+
+    /* roots = nodes that are never a target */
+    let roots = nodes.filter(n => !hasParent.has(n.id));
+    if (!roots.length) roots = nodes.slice(0, 1);
+
+    return { byId, children, roots };
+  }
+
+  function renderNode(node, childrenMap, depth) {
+    rendered.add(node.id);
+    const kids    = (childrenMap[node.id] || []).filter(cid => !rendered.has(cid));
+    const isLeaf  = kids.length === 0;
+    const indent  = depth * 16;
+
+    /* row */
+    const row = document.createElement('div');
+    row.className = 'tv-item';
+    row.dataset.id = node.id;
+    row.style.paddingLeft = indent + 'px';
+
+    /* chevron */
+    const toggle = document.createElement('span');
+    toggle.className = 'tv-toggle' + (isLeaf ? ' tv-leaf' : '');
+    toggle.innerHTML = CHEVRON;
+    row.appendChild(toggle);
+
+    /* icon */
+    const icon = document.createElement('span');
+    icon.className = 'tv-icon';
+    const dot = document.createElement('span');
+    dot.className = 'tv-icon-dot';
+    icon.appendChild(dot);
+    row.appendChild(icon);
+
+    /* label */
+    const label = document.createElement('span');
+    label.className = 'tv-label';
+    label.textContent = node.name || node.label || ('node ' + node.id);
+    row.appendChild(label);
+
+    const frag = document.createDocumentFragment();
+    frag.appendChild(row);
+
+    /* children container */
+    let childBox = null;
+    if (!isLeaf) {
+      childBox = document.createElement('div');
+      childBox.className = 'tv-children';
+
+      kids.forEach(cid => {
+        const childNode = nodeMap[cid];
+        if (childNode) {
+          childBox.appendChild(renderNode(childNode, childrenMap, depth + 1));
+        }
+      });
+
+      frag.appendChild(childBox);
+    }
+
+    /* toggle expand/collapse */
+    toggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (isLeaf) return;
+      const open = childBox.classList.toggle('tv-open');
+      toggle.classList.toggle('tv-expanded', open);
+    });
+
+    /* select on row click */
+    row.addEventListener('click', () => {
+      selectInTree(node.id);
+      /* notify main view */
+      const gv = window.GraphVisualizer;
+      if (gv && gv.select) gv.select(node.id);
+    });
+
+    return frag;
+  }
+
+  function selectInTree(id) {
+    if (selectedId === id) return;
+    selectedId = id;
+
+    container.querySelectorAll('.tv-item.tv-selected')
+      .forEach(el => el.classList.remove('tv-selected'));
+
+    if (id == null) return;
+
+    const row = container.querySelector(`.tv-item[data-id="${id}"]`);
+    if (!row) return;
+
+    row.classList.add('tv-selected');
+
+    /* auto-expand parents */
+    let el = row.previousElementSibling;
+    let parent = row.parentElement;
+    while (parent && parent !== container) {
+      if (parent.classList.contains('tv-children')) {
+        parent.classList.add('tv-open');
+        const prev = parent.previousElementSibling;
+        if (prev && prev.classList.contains('tv-item')) {
+          const tog = prev.querySelector('.tv-toggle');
+          if (tog) tog.classList.add('tv-expanded');
+        }
+      }
+      parent = parent.parentElement;
+    }
+
+    /* scroll into view */
+    row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  /* listen for main-view selection */
+  const mainView = document.getElementById('main-view');
+  if (mainView) {
+    mainView.addEventListener('gv:select', (e) => {
+      selectInTree(e.detail.id);
+    });
+  }
+
+  /* public API */
+  window.GraphTreeView = {
+    mount(nodes, links) {
+      container.innerHTML = '';
+      selectedId = null;
+      rendered.clear();
+
+      nodeMap = {};
+      nodes.forEach(n => { nodeMap[n.id] = n; });
+
+      const tree = buildTree(nodes, links);
+
+      tree.roots.forEach(root => {
+        if (rendered.has(root.id)) return;
+        container.appendChild(renderNode(root, tree.children, 0));
+      });
+
+      /* auto-expand first level */
+      container.querySelectorAll('#tree-view-content > .tv-children').forEach(ch => {
+        ch.classList.add('tv-open');
+        const prev = ch.previousElementSibling;
+        if (prev) {
+          const tog = prev.querySelector('.tv-toggle');
+          if (tog) tog.classList.add('tv-expanded');
+        }
+      });
+    },
+
+    select(id) { selectInTree(id); },
+    refresh(nodes, links) { this.mount(nodes, links); },
+  };
+
+})();
+</script>
