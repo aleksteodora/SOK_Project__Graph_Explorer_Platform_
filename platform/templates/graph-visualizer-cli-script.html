@@ -1,0 +1,94 @@
+<script>
+(function() {
+  var FETCH_MESSAGES_URL = "{{ messages_fetch_url }}";
+  var POST_MESSAGE_URL   = "{{ message_post_url }}";
+
+  var log   = document.getElementById("cli-log");
+  var input = document.getElementById("cli-input");
+  var btn   = document.getElementById("cli-send");
+
+  function timestamp() {
+    var d = new Date();
+    var h = String(d.getHours()).padStart(2, "0");
+    var m = String(d.getMinutes()).padStart(2, "0");
+    var s = String(d.getSeconds()).padStart(2, "0");
+    return h + ":" + m + ":" + s;
+  }
+
+  function addEntry(msg, type) {
+    var entry = document.createElement("div");
+    entry.className = "cli-entry " + (type || "cli-out");
+
+    var ts = document.createElement("span");
+    ts.className   = "cli-ts";
+    ts.textContent = timestamp();
+
+    var text = document.createElement("span");
+    text.className   = "cli-msg";
+    text.textContent = msg;
+
+    entry.appendChild(ts);
+    entry.appendChild(text);
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  // --- Ucitaj istoriju sa backenda ---
+  fetch(FETCH_MESSAGES_URL).then(function(r) {
+    return r.json();
+  }).then(function(messages) {
+    for (var i = 0; i < messages.length; i++) {
+      addEntry(messages[i].text, messages[i].type || "cli-out");
+    }
+  }).catch(function() {
+    addEntry("Greska pri ucitavanju istorije.", "cli-err");
+  });
+
+  // --- Posalji poruku ---
+  function send() {
+    var msg = input.value.trim();
+    if (!msg) return;
+
+    addEntry(msg, "cli-cmd");
+    input.value = "";
+
+    fetch(POST_MESSAGE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: msg })
+    }).then(function(r) {
+      return r.json();
+    }).then(function(data) {
+      if (data.error) {
+        addEntry(data.error, "cli-err");
+      } else if (data.response) {
+        addEntry(data.response, "cli-out");
+      }
+    }).catch(function() {
+      addEntry("Greska pri slanju poruke.", "cli-err");
+    });
+  }
+
+  btn.addEventListener("click", send);
+
+  input.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") send();
+  });
+
+  document.getElementById("cli-open-btn").addEventListener("click", function() {
+  var terminal = document.getElementById("cli-terminal");
+  var btn      = document.getElementById("cli-open-btn");
+
+  if (terminal.style.display === "none" || terminal.style.display === "") {
+    var rect = btn.getBoundingClientRect();
+    terminal.style.display  = "block";
+    terminal.style.position = "fixed";
+    terminal.style.top      = (rect.bottom + 6) + "px";
+    terminal.style.left     = rect.left + "px";
+    terminal.style.zIndex   = "9999";
+  } else {
+    terminal.style.display = "none";
+  }
+});
+})();
+</script>
