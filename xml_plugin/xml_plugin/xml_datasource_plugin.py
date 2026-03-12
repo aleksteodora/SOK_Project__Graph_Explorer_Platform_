@@ -10,6 +10,43 @@ import api.src.api.model.graph as g
 
 
 class XmlDataSource(DataSourcePlugin):
+    """
+        Data source plugin for parsing XML files into a Graph object.
+
+        The XML file should represent nodes as tags and attributes as child tags with text.
+        Nodes can reference other nodes using 'ref' attributes to create edges.
+        The file must have a root element.
+        The load() function takes the filename of the XML file that is in platform data folder.
+        The id attribute is optional and is used solely for the purpose of referencing inside the file itself.
+        New ids are generated for each tag automatically.
+
+        Rules:
+        1. Every node can have an optional 'id' attribute. This is used for referencing other nodes.
+        2. Nodes may have child nodes; these create direct edges in the graph.
+        3. Leaf child tags without children are treated as attributes of their parent node.
+        4. Nodes that reference another node should use the 'ref' attribute pointing to the target node's 'id'.
+        5. Allowed attribute types: int, float, str, date (ISO format, e.g., 2026-03-12).
+        6. Empty text or missing attributes are ignored.
+
+        Expected XML structure:
+
+        <root id="root_id">
+            <NodeA id="1">
+                <attribute1>value1</attribute1>
+                <attribute2>42</attribute2>
+                <ChildNode>
+                    <attributeX>valueX</attributeX>
+                </ChildNode>
+            </NodeA>
+            <NodeB ref="1">
+                <attributeY>2026-03-12</attributeY>
+            </NodeB>
+        </root>
+
+        Example interpretation:
+        - NodeA (id="1") has attributes 'attribute1' and 'attribute2', and a child node 'ChildNode'.
+        - NodeB references NodeA via ref="1" and has attribute 'attributeY'.
+    """
     def __init__(self):
         self._graph: Graph = Graph("why_does_the_graph_need_an_id", "xml_graph")
         self._node_counter = 1
