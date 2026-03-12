@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Any, Dict, List, Optional, Union
-from datetime import date
+from datetime import date, datetime
 
 AttributeValue = Union[int, float, str, date]
 ALLOWED_TYPES = (int, float, str, date)
@@ -16,6 +16,27 @@ def validate_attribute_value(key: str, value: Any) -> AttributeValue:
             f"Attribute '{key}': type '{type(value).__name__}' is not allowed. "
             f"Allowed types: int, float, str, date. Received: {value!r}"
         )
+    return value
+
+def parse_attribute_value(value: str, datetime_format="%Y-%m-%d") -> Any:
+    """Parses string into adequate type"""
+    value = value.strip()
+
+    try:
+        return int(value)
+    except ValueError:
+        pass
+
+    try:
+        return float(value)
+    except ValueError:
+        pass
+
+    try:
+        return datetime.strptime(value, datetime_format).date()
+    except ValueError:
+        pass
+
     return value
 
 class Node:
