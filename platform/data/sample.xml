@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Network>
+    <Server id="1">
+        <ip>192.168.1.1</ip>
+        <port>8080</port>
+    </Server>
+    <Database id="2">
+        <type>PostgreSQL</type>
+        <port>5432</port>
+    </Database>
+    <Cache id="3" ref="2">
+        <type>Redis</type>
+        <port>6379</port>
+    </Cache>
+    <API id="4" ref="1">
+        <name>REST API</name>
+        <language>Python</language>
+        <version>3.11</version>
+    </API>
+    <Worker id="5" ref="4">
+        <name>Task Worker</name>
+        <language>Python</language>
+        <queue>celery</queue>
+    </Worker>
+    <MessageQueue id="6" ref="5">
+        <name>RabbitMQ</name>
+        <type>AMQP</type>
+        <port>5672</port>
+    </MessageQueue>
+</Network>
