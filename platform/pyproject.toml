@@ -14,6 +14,7 @@ dependencies = [
 
 [tool.setuptools.data-files]
 templates = ["templates/*"]
+data      = ["data/*"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

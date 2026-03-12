@@ -1,0 +1,40 @@
+<button id="wm-open-btn">Select workspace</button>
+
+<div id="workspace-manager" style="display: none">
+  <div class="wm-wrapper">
+    <div class="wm-tabs">
+      <button class="wm-tab active" data-tab="select">Select existing</button>
+      <button class="wm-tab" data-tab="create">New workspace</button>
+    </div>
+
+    <div class="wm-panel active" data-panel="select">
+      <div>
+        <span class="wm-label">Workspace</span>
+        <select id="wm-select-ws">
+          <option value="" disabled selected>select...</option>
+        </select>
+      </div>
+      <button class="wm-submit" id="wm-btn-select">Submit</button>
+      <span class="wm-feedback" id="wm-fb-select"></span>
+    </div>
+
+    <div class="wm-panel" data-panel="create">
+      <div>
+        <span class="wm-label">Workspace name</span>
+        <input type="text" id="wm-ws-name" placeholder="ex. My project" />
+      </div>
+      <div>
+        <span class="wm-label">Datasource plugin</span>
+        <select id="wm-plugin">
+          <option value="" disabled selected>select plugin...</option>
+        </select>
+      </div>
+      <div>
+        <span class="wm-label">File name</span>
+        <input type="text" id="wm-filename" placeholder="ex. data.csv" />
+      </div>
+      <button class="wm-submit" id="wm-btn-create">Submit</button>
+      <span class="wm-feedback" id="wm-fb-create"></span>
+    </div>
+  </div>
+</div>

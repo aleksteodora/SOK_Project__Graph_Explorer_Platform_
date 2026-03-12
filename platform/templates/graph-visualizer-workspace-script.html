@@ -1,0 +1,102 @@
+<script>
+(function() {
+  var FETCH_WORKSPACES_URL = "{{ workspaces_fetch_api }}";
+  var FETCH_PLUGINS_URL    = "{{ plugins_fetch_api }}";
+  var POST_SELECT_URL      = "{{ workspace_select_api }}";
+  var POST_CREATE_URL      = "{{ workspace_create_api }}";
+
+  var tabs = document.querySelectorAll("#workspace-manager .wm-tab");
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].addEventListener("click", function() {
+      var allTabs   = document.querySelectorAll("#workspace-manager .wm-tab");
+      var allPanels = document.querySelectorAll("#workspace-manager .wm-panel");
+      for (var x = 0; x < allTabs.length; x++)  allTabs[x].classList.remove("active");
+      for (var y = 0; y < allPanels.length; y++) allPanels[y].classList.remove("active");
+      this.classList.add("active");
+      document.querySelector("#workspace-manager [data-panel='" + this.dataset.tab + "']").classList.add("active");
+    });
+  }
+
+  fetch(FETCH_WORKSPACES_URL).then(function(r) {
+    return r.json();
+  }).then(function(workspaces) {
+    var select = document.getElementById("wm-select-ws");
+    for (var i = 0; i < workspaces.length; i++) {
+      var option = document.createElement("option");
+      option.value       = workspaces[i].id;
+      option.textContent = workspaces[i].name;
+      select.appendChild(option);
+    }
+  });
+
+  fetch(FETCH_PLUGINS_URL).then(function(r) {
+    return r.json();
+  }).then(function(plugins) {
+    var select = document.getElementById("wm-plugin");
+    for (var i = 0; i < plugins.length; i++) {
+      var option = document.createElement("option");
+      option.value       = plugins[i].id;
+      option.textContent = plugins[i].name;
+      select.appendChild(option);
+    }
+  });
+
+  function showFeedback(el, msg, isError) {
+    el.textContent = msg;
+    el.className = "wm-feedback show" + (isError ? " error" : "");
+    setTimeout(function() { el.classList.remove("show"); }, 2500);
+  }
+
+  function post(url, body, feedback) {
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(function(res) {
+      if (res.ok) {
+        showFeedback(feedback, "Saved", false);
+      } else {
+        showFeedback(feedback, "Error while sending", true);
+      }
+    }).catch(function() {
+      showFeedback(feedback, "Error while sending", true);
+    });
+  }
+
+    document.getElementById("wm-open-btn").addEventListener("click", function () {
+        var manager = document.getElementById("workspace-manager");
+        var btn = document.getElementById("wm-open-btn");
+
+        if (manager.style.display === "none" || manager.style.display === "") {
+            var rect = btn.getBoundingClientRect();
+            manager.style.display = "inline-block";
+            manager.style.position = "fixed";
+            manager.style.top = (rect.bottom + 6) + "px";
+            manager.style.left = rect.left + "px";
+            manager.style.zIndex = "9999";
+        } else {
+            manager.style.display = "none";
+        }
+    });
+
+  document.getElementById("wm-btn-select").addEventListener("click", function() {
+    var workspaceId = document.getElementById("wm-select-ws").value;
+    var feedback    = document.getElementById("wm-fb-select");
+    if (!workspaceId) { showFeedback(feedback, "Select workspace", true); return; }
+    post(POST_SELECT_URL, { workspace_id: workspaceId }, feedback);
+  });
+
+  document.getElementById("wm-btn-create").addEventListener("click", function() {
+    var name     = document.getElementById("wm-ws-name").value.trim();
+    var pluginId = document.getElementById("wm-plugin").value;
+    var filename = document.getElementById("wm-filename").value.trim();
+    var feedback = document.getElementById("wm-fb-create");
+
+    if (!name)     { showFeedback(feedback, "Enter workspace name", true); return; }
+    if (!pluginId) { showFeedback(feedback, "Select plugin", true); return; }
+    if (!filename) { showFeedback(feedback, "Enter file name", true); return; }
+
+    post(POST_CREATE_URL, { name: name, plugin_id: pluginId, filename: filename }, feedback);
+  });
+})();
+</script>
