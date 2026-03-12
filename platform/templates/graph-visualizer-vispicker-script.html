@@ -1,0 +1,38 @@
+<script>
+(function() {
+  var FETCH_VISUALIZERS_URL = "{{ visualizers_fetch_api }}";
+  var POST_SELECT_VIS_URL  = "{{ visualizer_select_api }}";
+
+  var select = document.getElementById("vp-select");
+
+  /* ── populate dropdown ──────────────────────────────────────────── */
+  fetch(FETCH_VISUALIZERS_URL).then(function(r) {
+    return r.json();
+  }).then(function(visualizers) {
+    for (var i = 0; i < visualizers.length; i++) {
+      var option = document.createElement("option");
+      option.value       = visualizers[i].id;
+      option.textContent = visualizers[i].name;
+      if (visualizers[i].active) option.selected = true;
+      select.appendChild(option);
+    }
+  });
+
+  /* ── on change → POST new visualizer, reload page ───────────────── */
+  select.addEventListener("change", function() {
+    var visId = select.value;
+    if (!visId) return;
+
+    fetch(POST_SELECT_VIS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visualizer_id: visId })
+    }).then(function(res) {
+      if (res.ok) {
+        window.location.reload();
+      }
+    });
+  });
+})();
+</script>
+
