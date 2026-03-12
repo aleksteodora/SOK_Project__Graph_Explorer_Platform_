@@ -62,6 +62,18 @@
       } else if (data.response) {
         addEntry(data.response, "cli-out");
       }
+      /* If the server sent back new graph HTML, execute it immediately
+         so the visualization updates without a page reload. */
+      if (data.graph_html) {
+        var tmp = document.createElement("div");
+        tmp.innerHTML = data.graph_html;
+        var scripts = tmp.querySelectorAll("script");
+        for (var s = 0; s < scripts.length; s++) {
+          var newScript = document.createElement("script");
+          newScript.textContent = scripts[s].textContent;
+          document.body.appendChild(newScript);
+        }
+      }
     }).catch(function() {
       addEntry("Error while sending message", "cli-err");
     });
