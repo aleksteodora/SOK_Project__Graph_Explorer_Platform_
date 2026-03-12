@@ -50,25 +50,47 @@
 
 /* circle node fallback */
 #canvas circle.node, #canvas .gv-node {
-  fill: var(--accent);
-  stroke: #fff;
-  stroke-width: 2;
+  fill: var(--accent) !important;
+  stroke: var(--accent2) !important;
+  stroke-width: 2 !important;
   cursor: grab;
   filter: drop-shadow(0 2px 6px rgba(232,114,12,.3));
   transition: fill .15s, filter .15s;
 }
+#canvas g.node circle {
+  fill: var(--accent) !important;
+  stroke: var(--accent2) !important;
+  stroke-width: 2 !important;
+  cursor: grab;
+  filter: drop-shadow(0 2px 6px rgba(232,114,12,.3));
+  transition: fill .15s, filter .15s, stroke .15s;
+}
 #canvas circle.node:hover, #canvas .gv-node:hover {
-  fill: #f0962e;
+  fill: #f0962e !important;
+  filter: drop-shadow(0 2px 10px rgba(232,114,12,.5));
+}
+#canvas g.node:hover circle {
+  fill: #f0962e !important;
   filter: drop-shadow(0 2px 10px rgba(232,114,12,.5));
 }
 #canvas circle.node.gv-dragging-node {
-  fill: var(--accent2);
+  fill: var(--accent2) !important;
+  cursor: grabbing;
+  filter: drop-shadow(0 2px 12px rgba(201,90,0,.5));
+}
+#canvas g.node.gv-dragging-node circle {
+  fill: var(--accent2) !important;
   cursor: grabbing;
   filter: drop-shadow(0 2px 12px rgba(201,90,0,.5));
 }
 #canvas circle.node.gv-selected {
-  stroke: #2a1f0a;
-  stroke-width: 3;
+  stroke: #2a1f0a !important;
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 2px 14px rgba(232,114,12,.7));
+}
+#canvas g.node.gv-selected circle {
+  stroke: #2a1f0a !important;
+  stroke-width: 3 !important;
   filter: drop-shadow(0 2px 14px rgba(232,114,12,.7));
 }
 
@@ -77,11 +99,11 @@
   cursor: grab;
 }
 #canvas g.node rect {
-  fill: #e8720c;
-  stroke: #c95a00;
+  fill: #e8720c !important;
+  stroke: #c95a00 !important;
 }
 #canvas g.node text {
-  fill: #ffffff;
+  fill: #ffffff !important;
 }
 #canvas g.node.gv-dragging-node {
   cursor: grabbing;
@@ -103,9 +125,11 @@
   filter: drop-shadow(0 2px 12px rgba(201,90,0,.5));
 }
 
-#canvas line.link, #canvas .gv-link {
-  stroke: #c0a070;
-  stroke-width: 1.5;
+#canvas line.link, #canvas .gv-link, #canvas .edge {
+  stroke: #c0a070 !important;
+  stroke-width: 1.5 !important;
+  pointer-events: stroke;
+  cursor: help;
 }
 
 #canvas text {
