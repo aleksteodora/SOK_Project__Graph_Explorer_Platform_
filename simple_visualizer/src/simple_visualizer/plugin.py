@@ -85,7 +85,9 @@ class SimpleVisualizerPlugin(VisualizerPlugin):
     .attr("dominant-baseline", "central")
     .attr("font-size", 12)
     .attr("font-family", "sans-serif")
-    .attr("fill", "#fff")
+    .attr("fill", "#FFF")
+    .attr("stroke", "#000")
+    .attr("stroke-width", 0.5)
     .attr("pointer-events", "none")
     .text(d => d.label);
 
