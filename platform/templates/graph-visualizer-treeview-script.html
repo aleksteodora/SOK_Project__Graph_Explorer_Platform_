@@ -6,6 +6,7 @@
   let selectedId  = null;
   let nodeMap     = {};
   let treeChildren = {};
+  let mountVersion = 0;
 
   const CHEVRON = '<svg viewBox="0 0 10 10"><path d="M3 1l4 4-4 4"/></svg>';
   const INTERNAL_ATTR_KEYS = new Set([
@@ -14,6 +15,67 @@
     '_hw', '_hh', '_dragOffsetX', '_dragOffsetY',
   ]);
   const ATTRIBUTE_INDENT_OFFSET = 39;
+
+  function getGraphApiUrl() {
+    const path = (window.location && window.location.pathname) || '';
+    if (path.indexOf('/graph_visualizer') === 0) {
+      return '/graph_visualizer/api/graph/';
+    }
+    return '/api/graph/';
+  }
+
+  function normalizeApiNodes(payloadNodes) {
+    if (!Array.isArray(payloadNodes)) return [];
+    return payloadNodes.map(n => {
+      const attrs = (n && n.attributes && typeof n.attributes === 'object') ? n.attributes : {};
+      const out = Object.assign({ id: n.node_id }, attrs);
+      if (out.label == null && out.name != null) out.label = out.name;
+      return out;
+    }).filter(n => n.id != null);
+  }
+
+  function normalizeApiLinks(payloadEdges) {
+    if (!Array.isArray(payloadEdges)) return [];
+    return payloadEdges
+      .map(e => {
+        const attrs = (e && e.attributes && typeof e.attributes === 'object') ? e.attributes : {};
+        return Object.assign({
+          source: e.source_id,
+          target: e.target_id,
+        }, attrs);
+      })
+      .filter(l => l.source != null && l.target != null);
+  }
+
+  function mergeNodes(baseNodes, apiNodes) {
+    const mergedById = {};
+    baseNodes.forEach(n => {
+      if (!n || n.id == null) return;
+      mergedById[n.id] = Object.assign({}, n);
+    });
+    apiNodes.forEach(n => {
+      const prev = mergedById[n.id] || {};
+      mergedById[n.id] = Object.assign({}, prev, n);
+    });
+    return Object.keys(mergedById).map(id => mergedById[id]);
+  }
+
+  function enrichTreeData(baseNodes, baseLinks) {
+    return fetch(getGraphApiUrl(), { credentials: 'same-origin' })
+      .then(r => {
+        if (!r.ok) throw new Error('Graph API request failed');
+        return r.json();
+      })
+      .then(data => {
+        const apiNodes = normalizeApiNodes(data.nodes);
+        const apiLinks = normalizeApiLinks(data.edges);
+        return {
+          nodes: apiNodes.length ? mergeNodes(baseNodes, apiNodes) : baseNodes,
+          links: apiLinks.length ? apiLinks : baseLinks,
+        };
+      })
+      .catch(() => ({ nodes: baseNodes, links: baseLinks }));
+  }
 
   function buildTree(nodes, links) {
     const byId     = {};
@@ -242,13 +304,21 @@
   /* public API */
   window.GraphTreeView = {
     mount(nodes, links) {
+      mountVersion += 1;
+      const currentMount = mountVersion;
+      const baseNodes = Array.isArray(nodes) ? nodes : [];
+      const baseLinks = Array.isArray(links) ? links : [];
+
+      enrichTreeData(baseNodes, baseLinks).then(({ nodes: resolvedNodes, links: resolvedLinks }) => {
+        if (currentMount !== mountVersion) return;
+
       container.innerHTML = '';
       selectedId = null;
 
       nodeMap = {};
-      nodes.forEach(n => { nodeMap[n.id] = n; });
+      resolvedNodes.forEach(n => { nodeMap[n.id] = n; });
 
-      const tree = buildTree(nodes, links);
+      const tree = buildTree(resolvedNodes, resolvedLinks);
       treeChildren = tree.children;
 
       tree.roots.forEach(root => {
@@ -269,6 +339,7 @@
           const tog = prev.querySelector('.tv-toggle');
           if (tog) tog.classList.add('tv-expanded');
         }
+      });
       });
     },
 
