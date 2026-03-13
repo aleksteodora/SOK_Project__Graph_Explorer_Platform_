@@ -136,6 +136,18 @@
       .selectAll('.node, .gv-node')
       .call(drag)
       .on('mouseover', (event, d) => showTip(event, d))
+      .on('mousemove', (event, d) => showTip(event, d))
+      .on('mouseout',  ()          => hideTip());
+  }
+
+  function attachEdgeHover() {
+    if (!window.d3 || !state.svg) return;
+
+    d3.select(state.svg)
+      .selectAll('.link, .edge')
+      .style('pointer-events', 'stroke')
+      .on('mouseover', (event, d) => showEdgeTip(event, d))
+      .on('mousemove', (event, d) => showEdgeTip(event, d))
       .on('mouseout',  ()          => hideTip());
   }
 
@@ -196,12 +208,37 @@
 
   function showTip(event, d) {
     if (!d || state.isDraggingNode) return;
+    const skip = new Set(['index','x','y','vx','vy','fx','fy',
+                          '_dragOffsetX','_dragOffsetY','_hw','_hh',
+                          'source','target','label','line2','line3']);
     const lines = [];
-    if (d.id    != null) lines.push(`id: ${d.id}`);
-    if (d.label != null) lines.push(`label: ${d.label}`);
-    if (d.name  != null) lines.push(`name: ${d.name}`);
-    if (d.type  != null) lines.push(`type: ${d.type}`);
-    if (d.group != null) lines.push(`group: ${d.group}`);
+    if (d.id != null) lines.push(`id: ${d.id}`);
+    for (const key of Object.keys(d)) {
+      if (key === 'id' || skip.has(key)) continue;
+      const val = d[key];
+      if (val == null || typeof val === 'object') continue;
+      lines.push(`${key}: ${val}`);
+    }
+    if (!lines.length) return;
+    tooltip.textContent = lines.join('\n');
+    tooltip.classList.add('gv-visible');
+    moveTip(event);
+  }
+  function showEdgeTip(event, d) {
+    if (!d) return;
+    const skip = new Set(['index','source','target']);
+    const lines = [];
+    if (d.edge_id != null) lines.push(`edge_id: ${d.edge_id}`);
+    const srcId = d.source && d.source.id != null ? d.source.id : d.source;
+    const tgtId = d.target && d.target.id != null ? d.target.id : d.target;
+    lines.push(`source: ${srcId}`);
+    lines.push(`target: ${tgtId}`);
+    for (const key of Object.keys(d)) {
+      if (key === 'edge_id' || skip.has(key)) continue;
+      const val = d[key];
+      if (val == null || typeof val === 'object') continue;
+      lines.push(`${key}: ${val}`);
+    }
     if (!lines.length) return;
     tooltip.textContent = lines.join('\n');
     tooltip.classList.add('gv-visible');
@@ -229,6 +266,22 @@
     applyT();
   }
 
+  function measureNodes(svgEl = state.svg) {
+    if (!window.d3 || !svgEl) return;
+
+    d3.select(svgEl).selectAll('.node, .gv-node').each(function(d) {
+      if (!d) return;
+      try {
+        const bb = this.getBBox();
+        d._hw = bb.width  / 2;
+        d._hh = bb.height / 2;
+      } catch(e) {
+        d._hw = 40;
+        d._hh = 40;
+      }
+    });
+  }
+
   window.GraphVisualizer = {
     mount(svgEl, simulation) {
       if (state.svg) state.svg.remove();
@@ -237,7 +290,7 @@
       state.selectedId = null;
 
       const nodeCount = simulation ? simulation.nodes().length : 10;
-      WORLD = Math.max(1200, nodeCount * 180);
+      WORLD = Math.max(1200, Math.round(1200 + Math.sqrt(nodeCount) * 300));
 
       svgEl.removeAttribute('width');
       svgEl.removeAttribute('height');
@@ -269,18 +322,55 @@
 
       canvas.appendChild(svgEl);
 
-      function measureNodes() {
-        d3.select(svgEl).selectAll('.node, .gv-node').each(function(d) {
-          if (!d) return;
-          try {
-            const bb = this.getBBox();
-            // half-extents od centra čvora
-            d._hw = bb.width  / 2;
-            d._hh = bb.height / 2;
-          } catch(e) {
-            d._hw = 40;
-            d._hh = 40;
-          }
+      /* ── arrowhead marker (injected by mainview) ──────────────── */
+      let defs = svgEl.querySelector('defs');
+      if (!defs) {
+        defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        svgEl.insertBefore(defs, svgEl.firstChild);
+      }
+      if (!defs.querySelector('#gv-arrowhead')) {
+        const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+        marker.setAttribute('id', 'gv-arrowhead');
+        marker.setAttribute('viewBox', '0 0 10 10');
+        marker.setAttribute('refX', '10');
+        marker.setAttribute('refY', '5');
+        marker.setAttribute('markerWidth', '8');
+        marker.setAttribute('markerHeight', '8');
+        marker.setAttribute('orient', 'auto-start-reverse');
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', 'M 0 0 L 10 5 L 0 10 Z');
+        path.setAttribute('fill', '#999');
+        marker.appendChild(path);
+        defs.appendChild(marker);
+      }
+
+      /* apply marker-end to all edge lines */
+      d3.select(svgEl).selectAll('.link, .edge')
+        .attr('marker-end', 'url(#gv-arrowhead)');
+
+      /* ── shorten lines so arrows stop at node edge ────────────── */
+      if (simulation) {
+        simulation.on('tick.gv-arrows', () => {
+          d3.select(svgEl).selectAll('.link, .edge').each(function(d) {
+            if (!d || !d.source || !d.target) return;
+            const sx = d.source.x, sy = d.source.y;
+            const tx = d.target.x, ty = d.target.y;
+            const dx = tx - sx, dy = ty - sy;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            const ux = dx / dist, uy = dy / dist;
+
+            /* compute offset to stop at rect boundary */
+            const hw = d.source._hw || 70, hh = d.source._hh || 39;
+            const thw = d.target._hw || 70, thh = d.target._hh || 39;
+            const oS = Math.min(hw / (Math.abs(ux) || 0.001), hh / (Math.abs(uy) || 0.001));
+            const oT = Math.min(thw / (Math.abs(ux) || 0.001), thh / (Math.abs(uy) || 0.001));
+
+            d3.select(this)
+              .attr('x1', sx + ux * Math.min(oS, dist / 2))
+              .attr('y1', sy + uy * Math.min(oS, dist / 2))
+              .attr('x2', tx - ux * Math.min(oT, dist / 2))
+              .attr('y2', ty - uy * Math.min(oT, dist / 2));
+          });
         });
       }
 
@@ -299,11 +389,24 @@
       }
 
       attachDrag();
+      attachEdgeHover();
 
-      setTimeout(() => { measureNodes(); fit(); }, 80);
+      setTimeout(() => { measureNodes(svgEl); fit(); }, 80);
+
+      if (simulation) {
+        const simNodes = simulation.nodes();
+        const linkForce = simulation.force("link");
+        const simLinks = linkForce ? linkForce.links() : [];
+        if (window.GraphBirdView) GraphBirdView.mount(simulation, simLinks);
+        if (window.GraphTreeView) GraphTreeView.mount(simNodes, simLinks);
+      }
     },
 
-    refresh() { attachDrag(); measureNodes(); },
+    refresh() {
+      attachDrag();
+      attachEdgeHover();
+      measureNodes();
+    },
     fit,
 
     select(id) {
