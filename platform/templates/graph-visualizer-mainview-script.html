@@ -145,6 +145,7 @@
 
     d3.select(state.svg)
       .selectAll('.link, .edge')
+      .style('stroke-width', '4px')
       .style('pointer-events', 'stroke')
       .on('mouseover', (event, d) => showEdgeTip(event, d))
       .on('mousemove', (event, d) => showEdgeTip(event, d))
@@ -263,6 +264,17 @@
     state.k  = clamp(Math.min((cw - pad*2) / bb.width, (ch - pad*2) / bb.height), MIN_K, MAX_K);
     state.tx = cw/2 - state.k * (bb.x + bb.width/2);
     state.ty = ch/2 - state.k * (bb.y + bb.height/2);
+    applyT();
+  }
+
+  function centerOnNode(node) {
+    if (!node) return;
+    const x = Number.isFinite(node.x) ? node.x : 0;
+    const y = Number.isFinite(node.y) ? node.y : 0;
+    const cw = canvas.clientWidth;
+    const ch = canvas.clientHeight;
+    state.tx = cw / 2 - state.k * x;
+    state.ty = ch / 2 - state.k * y;
     applyT();
   }
 
@@ -409,13 +421,14 @@
     },
     fit,
 
-    select(id) {
+    select(id, options = {}) {
       if (!state.svg) return;
       let found = null;
       d3.select(state.svg).selectAll('.node, .gv-node').each((d) => {
         if (d && d.id === id) found = d;
       });
       selectNode(found);
+      if (found && options.center === true) centerOnNode(found);
     },
 
     setTransform(k, tx, ty) {

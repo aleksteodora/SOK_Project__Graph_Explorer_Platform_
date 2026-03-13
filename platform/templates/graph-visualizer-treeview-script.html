@@ -238,9 +238,9 @@
         toggle.classList.add('tv-expanded');
         row.classList.add('tv-attrs-open');
       }
-      /* notify main view */
+      /* notify main view and center on selected node */
       const gv = window.GraphVisualizer;
-      if (gv && gv.select) gv.select(node.id);
+      if (gv && gv.select) gv.select(node.id, { center: true });
     });
 
     return frag;

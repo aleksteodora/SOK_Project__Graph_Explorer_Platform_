@@ -19,6 +19,8 @@ from typing import Optional
 from django.shortcuts import render
 from django.http import JsonResponse
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
 # ── Jinja2 for rendering platform template variables ──────────────────
 try:
     from jinja2 import Template as JinjaTemplate
@@ -39,62 +41,23 @@ from api import (
     DataSourcePlugin, VisualizerPlugin, PluginParameter,
 )
 
-# The graph-platform package is named 'platform' which clashes with the
-# Python stdlib module of the same name.  We use importlib to load it
-# from its known source directory so that stdlib 'platform' is not
-# shadowed for the rest of the process.
-import importlib.util as _ilu
+# Use normal imports from local project sources even when not installed in venv.
+# Importing through `src.platform` avoids the stdlib `platform` name clash.
+_platform_project_dir = PROJECT_ROOT / "platform"
+if _platform_project_dir.exists():
+    sys.path.insert(0, str(_platform_project_dir))
 
-_PLATFORM_SRC = Path(__file__).resolve().parent.parent.parent / "platform" / "src" / "platform"
-
-def _load_platform_module(name: str, py_file: str):
-    """Import a single module from the graph-platform source tree."""
-    spec = _ilu.spec_from_file_location(name, str(_PLATFORM_SRC / py_file))
-    mod = _ilu.module_from_spec(spec)
-    sys.modules[name] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
-# Load sub-modules first (they are imported by __init__)
-_graph_service_mod = _load_platform_module(
-    "platform.graph_service", "graph_service.py"
-)
-_plugin_registry_mod = _load_platform_module(
-    "platform.plugin_registry", "plugin_registry.py"
-)
-_cli_mod = _load_platform_module("platform.cli", "cli.py")
-_workspace_mod = _load_platform_module("platform.workspace", "workspace.py")
-
-# Now load the dtos sub-package
-_dtos_init = _PLATFORM_SRC / "dtos" / "__init__.py"
-_load_platform_module("platform.dtos", str(_dtos_init).replace(str(_PLATFORM_SRC) + "\\", "").replace(str(_PLATFORM_SRC) + "/", ""))
-
-_msg_dto_mod = _load_platform_module(
-    "platform.dtos.MessageDTO",
-    str(Path("dtos") / "MessageDTO.py"),
-)
-_msg_resp_dto_mod = _load_platform_module(
-    "platform.dtos.MessageResponseDTO",
-    str(Path("dtos") / "MessageResponseDTO.py"),
-)
-
-# Pull classes into local namespace
-PluginRegistry   = _plugin_registry_mod.PluginRegistry
-Workspace        = _workspace_mod.Workspace
-WorkspaceError   = _workspace_mod.WorkspaceError
-CLI              = _cli_mod.CLI
-InvalidCommandError = _cli_mod.InvalidCommandError
-GraphService     = _graph_service_mod.GraphService
-FilterParseError = _graph_service_mod.FilterParseError
-FilterTypeError  = _graph_service_mod.FilterTypeError
-MessageDTO       = _msg_dto_mod.MessageDTO
-MessageResponseDTO = _msg_resp_dto_mod.MessageResponseDTO
+from src.platform import GraphService, FilterParseError, FilterTypeError
+from src.platform.plugin_registry import PluginRegistry
+from src.platform.workspace import Workspace, WorkspaceError
+from src.platform.cli import CLI, InvalidCommandError
+from src.platform.dtos.MessageDTO import MessageDTO
+from src.platform.dtos.MessageResponseDTO import MessageResponseDTO
 
 # ══════════════════════════════════════════════════════════════════════
 # Template helpers
 # ══════════════════════════════════════════════════════════════════════
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 TEMPLATES_DIR = PROJECT_ROOT / "platform" / "templates"
 
 
