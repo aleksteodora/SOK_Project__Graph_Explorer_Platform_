@@ -5,10 +5,77 @@
   const container = document.getElementById('tree-view-content');
   let selectedId  = null;
   let nodeMap     = {};
+  let treeChildren = {};
+  let mountVersion = 0;
 
   const CHEVRON = '<svg viewBox="0 0 10 10"><path d="M3 1l4 4-4 4"/></svg>';
+  const INTERNAL_ATTR_KEYS = new Set([
+    'id',
+    'index', 'x', 'y', 'vx', 'vy', 'fx', 'fy',
+    '_hw', '_hh', '_dragOffsetX', '_dragOffsetY',
+  ]);
+  const ATTRIBUTE_INDENT_OFFSET = 39;
 
-  const rendered = new Set();
+  function getGraphApiUrl() {
+    const path = (window.location && window.location.pathname) || '';
+    if (path.indexOf('/graph_visualizer') === 0) {
+      return '/graph_visualizer/api/graph/';
+    }
+    return '/api/graph/';
+  }
+
+  function normalizeApiNodes(payloadNodes) {
+    if (!Array.isArray(payloadNodes)) return [];
+    return payloadNodes.map(n => {
+      const attrs = (n && n.attributes && typeof n.attributes === 'object') ? n.attributes : {};
+      const out = Object.assign({ id: n.node_id }, attrs);
+      if (out.label == null && out.name != null) out.label = out.name;
+      return out;
+    }).filter(n => n.id != null);
+  }
+
+  function normalizeApiLinks(payloadEdges) {
+    if (!Array.isArray(payloadEdges)) return [];
+    return payloadEdges
+      .map(e => {
+        const attrs = (e && e.attributes && typeof e.attributes === 'object') ? e.attributes : {};
+        return Object.assign({
+          source: e.source_id,
+          target: e.target_id,
+        }, attrs);
+      })
+      .filter(l => l.source != null && l.target != null);
+  }
+
+  function mergeNodes(baseNodes, apiNodes) {
+    const mergedById = {};
+    baseNodes.forEach(n => {
+      if (!n || n.id == null) return;
+      mergedById[n.id] = Object.assign({}, n);
+    });
+    apiNodes.forEach(n => {
+      const prev = mergedById[n.id] || {};
+      mergedById[n.id] = Object.assign({}, prev, n);
+    });
+    return Object.keys(mergedById).map(id => mergedById[id]);
+  }
+
+  function enrichTreeData(baseNodes, baseLinks) {
+    return fetch(getGraphApiUrl(), { credentials: 'same-origin' })
+      .then(r => {
+        if (!r.ok) throw new Error('Graph API request failed');
+        return r.json();
+      })
+      .then(data => {
+        const apiNodes = normalizeApiNodes(data.nodes);
+        const apiLinks = normalizeApiLinks(data.edges);
+        return {
+          nodes: apiNodes.length ? mergeNodes(baseNodes, apiNodes) : baseNodes,
+          links: apiLinks.length ? apiLinks : baseLinks,
+        };
+      })
+      .catch(() => ({ nodes: baseNodes, links: baseLinks }));
+  }
 
   function buildTree(nodes, links) {
     const byId     = {};
@@ -36,10 +103,48 @@
     return { byId, children, roots };
   }
 
+  function getAttributeEntries(node) {
+    return Object.entries(node).filter(([key, value]) => {
+      if (INTERNAL_ATTR_KEYS.has(key)) return false;
+      if (value == null) return false;
+      const type = typeof value;
+      return type === 'string' || type === 'number' || type === 'boolean';
+    });
+  }
+
+  function renderAttributes(node, depth) {
+    const attrs = getAttributeEntries(node);
+    if (!attrs.length) return null;
+
+    const attrsBox = document.createElement('div');
+    attrsBox.className = 'tv-attrs';
+    attrsBox.style.paddingLeft = (depth * 16 + ATTRIBUTE_INDENT_OFFSET) + 'px';
+
+    attrs.forEach(([key, value]) => {
+      const attrRow = document.createElement('div');
+      attrRow.className = 'tv-attr-row';
+
+      const keyEl = document.createElement('span');
+      keyEl.className = 'tv-attr-key';
+      keyEl.textContent = key + ':';
+      attrRow.appendChild(keyEl);
+
+      const valueEl = document.createElement('span');
+      valueEl.className = 'tv-attr-value';
+      valueEl.textContent = String(value);
+      attrRow.appendChild(valueEl);
+
+      attrsBox.appendChild(attrRow);
+    });
+
+    return attrsBox;
+  }
+
   function renderNode(node, childrenMap, depth) {
-    rendered.add(node.id);
-    const kids    = (childrenMap[node.id] || []).filter(cid => !rendered.has(cid));
-    const isLeaf  = kids.length === 0;
+    const kids    = childrenMap[node.id] || [];
+    const hasChildren = kids.length > 0;
+    const attrsBox = renderAttributes(node, depth);
+    const isLeaf  = !hasChildren && !attrsBox;
     const indent  = depth * 16;
 
     /* row */
@@ -65,7 +170,7 @@
     /* label */
     const label = document.createElement('span');
     label.className = 'tv-label';
-    label.textContent = node.name || node.label || ('node ' + node.id);
+    label.textContent = 'ID: ' + (node.id != null ? String(node.id) : '');
     row.appendChild(label);
 
     const frag = document.createDocumentFragment();
@@ -77,12 +182,21 @@
       childBox = document.createElement('div');
       childBox.className = 'tv-children';
 
-      kids.forEach(cid => {
-        const childNode = nodeMap[cid];
-        if (childNode) {
-          childBox.appendChild(renderNode(childNode, childrenMap, depth + 1));
-        }
-      });
+      if (attrsBox) {
+        childBox.appendChild(attrsBox);
+      }
+
+      const renderChildrenOnce = () => {
+        if (childBox.dataset.childrenRendered === '1') return;
+        childBox.dataset.childrenRendered = '1';
+        kids.forEach(cid => {
+          const childNode = nodeMap[cid];
+          if (childNode) {
+            childBox.appendChild(renderNode(childNode, childrenMap, depth + 1));
+          }
+        });
+      };
+      childBox.__renderChildrenOnce = renderChildrenOnce;
 
       frag.appendChild(childBox);
     }
@@ -90,14 +204,40 @@
     /* toggle expand/collapse */
     toggle.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (isLeaf) return;
+      if (!childBox) return;
+      if (!childBox.classList.contains('tv-open') && typeof childBox.__renderChildrenOnce === 'function') {
+        childBox.__renderChildrenOnce();
+      }
       const open = childBox.classList.toggle('tv-open');
       toggle.classList.toggle('tv-expanded', open);
     });
 
     /* select on row click */
     row.addEventListener('click', () => {
+      const isSameSelected = selectedId === node.id;
+      const isAttrsOpen = row.classList.contains('tv-attrs-open');
+      if (isSameSelected && isAttrsOpen) {
+        row.classList.remove('tv-attrs-open');
+        if (childBox) {
+          const hasChildRows = Array.from(childBox.children)
+            .some(el => el.classList && el.classList.contains('tv-item'));
+          if (!hasChildRows) {
+            childBox.classList.remove('tv-open');
+            toggle.classList.remove('tv-expanded');
+          }
+        }
+        return;
+      }
+
       selectInTree(node.id);
+      if (childBox) {
+        if (typeof childBox.__renderChildrenOnce === 'function') {
+          childBox.__renderChildrenOnce();
+        }
+        childBox.classList.add('tv-open');
+        toggle.classList.add('tv-expanded');
+        row.classList.add('tv-attrs-open');
+      }
       /* notify main view */
       const gv = window.GraphVisualizer;
       if (gv && gv.select) gv.select(node.id);
@@ -115,13 +255,27 @@
 
     if (id == null) return;
 
-    const row = container.querySelector(`.tv-item[data-id="${id}"]`);
+    let row = container.querySelector(`.tv-item[data-id="${id}"]`);
+    if (!row && nodeMap[id]) {
+      container.appendChild(renderNode(nodeMap[id], treeChildren, 0));
+      row = container.querySelector(`.tv-item[data-id="${id}"]`);
+    }
     if (!row) return;
 
     row.classList.add('tv-selected');
 
+    const childBox = row.nextElementSibling;
+    if (childBox && childBox.classList.contains('tv-children')) {
+      if (typeof childBox.__renderChildrenOnce === 'function') {
+        childBox.__renderChildrenOnce();
+      }
+      childBox.classList.add('tv-open');
+      row.classList.add('tv-attrs-open');
+      const rowToggle = row.querySelector('.tv-toggle');
+      if (rowToggle) rowToggle.classList.add('tv-expanded');
+    }
+
     /* auto-expand parents */
-    let el = row.previousElementSibling;
     let parent = row.parentElement;
     while (parent && parent !== container) {
       if (parent.classList.contains('tv-children')) {
@@ -150,28 +304,42 @@
   /* public API */
   window.GraphTreeView = {
     mount(nodes, links) {
+      mountVersion += 1;
+      const currentMount = mountVersion;
+      const baseNodes = Array.isArray(nodes) ? nodes : [];
+      const baseLinks = Array.isArray(links) ? links : [];
+
+      enrichTreeData(baseNodes, baseLinks).then(({ nodes: resolvedNodes, links: resolvedLinks }) => {
+        if (currentMount !== mountVersion) return;
+
       container.innerHTML = '';
       selectedId = null;
-      rendered.clear();
 
       nodeMap = {};
-      nodes.forEach(n => { nodeMap[n.id] = n; });
+      resolvedNodes.forEach(n => { nodeMap[n.id] = n; });
 
-      const tree = buildTree(nodes, links);
+      const tree = buildTree(resolvedNodes, resolvedLinks);
+      treeChildren = tree.children;
 
       tree.roots.forEach(root => {
-        if (rendered.has(root.id)) return;
         container.appendChild(renderNode(root, tree.children, 0));
       });
 
       /* auto-expand first level */
       container.querySelectorAll('#tree-view-content > .tv-children').forEach(ch => {
+        if (typeof ch.__renderChildrenOnce === 'function') {
+          ch.__renderChildrenOnce();
+        }
+        const hasChildRows = Array.from(ch.children)
+          .some(el => el.classList && el.classList.contains('tv-item'));
+        if (!hasChildRows) return;
         ch.classList.add('tv-open');
         const prev = ch.previousElementSibling;
         if (prev) {
           const tog = prev.querySelector('.tv-toggle');
           if (tog) tog.classList.add('tv-expanded');
         }
+      });
       });
     },
 
