@@ -6,6 +6,7 @@
   let selectedId  = null;
   let nodeMap     = {};
   let treeChildren = {};
+  let treeRootIds = [];
   let mountVersion = 0;
 
   const CHEVRON = '<svg viewBox="0 0 10 10"><path d="M3 1l4 4-4 4"/></svg>';
@@ -80,11 +81,13 @@
   function buildTree(nodes, links) {
     const byId     = {};
     const children  = {};
+    const parents = {};
     const hasParent = new Set();
 
     nodes.forEach(n => {
       byId[n.id] = n;
       children[n.id] = [];
+      parents[n.id] = [];
     });
 
     links.forEach(l => {
@@ -92,6 +95,7 @@
       const tid = typeof l.target === 'object' ? l.target.id : l.target;
       if (byId[sid] && byId[tid]) {
         children[sid].push(tid);
+        parents[tid].push(sid);
         hasParent.add(tid);
       }
     });
@@ -100,7 +104,87 @@
     let roots = nodes.filter(n => !hasParent.has(n.id));
     if (!roots.length) roots = nodes.slice(0, 1);
 
-    return { byId, children, roots };
+    return { byId, children, parents, roots };
+  }
+
+  function idsEqual(a, b) {
+    return String(a) === String(b);
+  }
+
+  function findAnyRowById(id) {
+    const rows = container.querySelectorAll('.tv-item[data-id]');
+    for (const row of rows) {
+      if (idsEqual(row.dataset.id, id)) return row;
+    }
+    return null;
+  }
+
+  function findDirectRowById(scope, id) {
+    if (!scope || !scope.children) return null;
+    const kids = Array.from(scope.children);
+    for (const child of kids) {
+      if (!child.classList || !child.classList.contains('tv-item')) continue;
+      if (idsEqual(child.dataset.id, id)) return child;
+    }
+    return null;
+  }
+
+  function findPathFromRoots(targetId) {
+    const target = String(targetId);
+    if (!target.length) return null;
+
+    const roots = treeRootIds.length ? treeRootIds.slice() : Object.keys(nodeMap);
+    const queue = roots.map(rootId => [rootId]);
+    const visited = new Set();
+
+    while (queue.length) {
+      const path = queue.shift();
+      const currentId = path[path.length - 1];
+      const key = String(currentId);
+      if (visited.has(key)) continue;
+      visited.add(key);
+
+      if (key === target) return path;
+
+      const children = treeChildren[currentId] || [];
+      children.forEach((childId) => {
+        const childKey = String(childId);
+        if (!visited.has(childKey)) {
+          queue.push(path.concat(childId));
+        }
+      });
+    }
+
+    return null;
+  }
+
+  function ensureRowVisible(id) {
+    let row = findAnyRowById(id);
+    if (row) return row;
+
+    const path = findPathFromRoots(id);
+    if (!path || !path.length) return null;
+
+    let scope = container;
+    for (let i = 0; i < path.length; i += 1) {
+      row = findDirectRowById(scope, path[i]);
+      if (!row) return null;
+
+      const childBox = row.nextElementSibling;
+      if (childBox && childBox.classList.contains('tv-children')) {
+        if (typeof childBox.__renderChildrenOnce === 'function') {
+          childBox.__renderChildrenOnce();
+        }
+        if (i < path.length - 1) {
+          childBox.classList.add('tv-open');
+          const tog = row.querySelector('.tv-toggle');
+          if (tog) tog.classList.add('tv-expanded');
+          scope = childBox;
+        }
+      }
+    }
+
+    return row;
   }
 
   function getAttributeEntries(node) {
@@ -247,7 +331,6 @@
   }
 
   function selectInTree(id) {
-    if (selectedId === id) return;
     selectedId = id;
 
     container.querySelectorAll('.tv-item.tv-selected')
@@ -255,11 +338,8 @@
 
     if (id == null) return;
 
-    let row = container.querySelector(`.tv-item[data-id="${id}"]`);
-    if (!row && nodeMap[id]) {
-      container.appendChild(renderNode(nodeMap[id], treeChildren, 0));
-      row = container.querySelector(`.tv-item[data-id="${id}"]`);
-    }
+    let row = findAnyRowById(id);
+    if (!row) row = ensureRowVisible(id);
     if (!row) return;
 
     row.classList.add('tv-selected');
@@ -320,6 +400,7 @@
 
       const tree = buildTree(resolvedNodes, resolvedLinks);
       treeChildren = tree.children;
+      treeRootIds = tree.roots.map(root => root.id);
 
       tree.roots.forEach(root => {
         container.appendChild(renderNode(root, tree.children, 0));
