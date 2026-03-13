@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Graph Explorer Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
+  {{ main_style|safe }}
+  {{ fv_style|safe }}
+  {{ ws_style|safe }}
+  {{ cli_style|safe }}
+  {{ bv_style|safe }}
+  {{ tv_style|safe }}
+  {{ vp_style|safe }}
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      background: #faf6ef;
+      color: #2a1f0a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
+      background: #fff;
+      border-bottom: 1px solid #e0d0b0;
+      box-shadow: 0 1px 4px rgba(0,0,0,.04);
+      z-index: 100;
+      flex-wrap: wrap;
+    }
+
+    #toolbar-filter {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      min-width: 0;
+    }
+
+    #toolbar-filter #filter-bar {
+      position: static;
+      top: auto;
+      left: auto;
+      transform: none;
+      z-index: auto;
+      align-items: flex-end;
+      pointer-events: auto;
+    }
+
+    #toolbar-filter #filter-bar .fb-input-row {
+      box-shadow: none;
+      padding: 4px 8px;
+    }
+
+    #toolbar-filter #filter-bar .fb-chips {
+      justify-content: flex-end;
+      max-width: 100%;
+    }
+
+    #toolbar .brand {
+      font-size: 14px;
+      font-weight: 700;
+      color: #e8720c;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-right: 12px;
+    }
+
+    #toolbar .active-ws {
+      font-size: 11px;
+      color: #8a6a3a;
+      background: #fff8ee;
+      border: 1px solid #e0d0b0;
+      border-radius: 4px;
+      padding: 4px 10px;
+    }
+
+    #app-layout {
+      display: flex;
+      flex: 1;
+      gap: 12px;
+      padding: 16px 20px;
+      overflow: hidden;
+    }
+
+    #side-panel {
+      width: 300px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      order: -1;
+    }
+
+    #graph-area {
+      flex: 1;
+      position: relative;
+      min-width: 0;
+    }
+
+    #tree-view {
+      position: relative !important;
+      bottom: auto !important;
+      left: auto !important;
+      width: 100% !important;
+      height: 300px !important;
+    }
+
+    .empty-state {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #8a6a3a;
+      font-size: 13px;
+      text-align: center;
+      gap: 8px;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .empty-state .hint {
+      font-size: 11px;
+      opacity: .6;
+    }
+
+    @media (max-width: 900px) {
+      #app-layout { flex-direction: column; }
+      #side-panel { width: 100%; flex-direction: row; }
+      #side-panel > * { flex: 1; }
+      #tree-view { height: 200px !important; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header id="toolbar">
+    <span class="brand">⬡ Graph Explorer</span>
+
+    {% if active_workspace_name %}
+      <span class="active-ws">{{ active_workspace_name }}</span>
+    {% endif %}
+
+    {{ ws_body|safe }}
+    {{ vp_body|safe }}
+    {{ cli_body|safe }}
+    <div id="toolbar-filter">{{ fv_body|safe }}</div>
+  </header>
+
+  <div id="app-layout">
+
+    <section id="graph-area">
+      {{ main_body|safe }}
+
+      {% if not graph_html %}
+        <div class="empty-state" id="empty-state">
+          <div>No graph loaded</div>
+          <div class="hint">Click <b>Select workspace</b> → <b>New workspace</b> to get started</div>
+        </div>
+      {% endif %}
+    </section>
+
+    <aside id="side-panel">
+      {{ tv_body|safe }}
+      {{ bv_body|safe }}
+    </aside>
+
+  </div>
+
+  {{ main_script|safe }}
+  {{ fv_script|safe }}
+  {{ bv_script|safe }}
+  {{ tv_script|safe }}
+  {{ ws_script|safe }}
+  {{ vp_script|safe }}
+  {{ cli_script|safe }}
+  {{ graph_html|safe }}
+
+  <script>
+  (function() {
+    var _origFetch = window.fetch;
+    window.fetch = function(url, opts) {
+      return _origFetch.apply(this, arguments).then(function(response) {
+        if (opts && opts.method === "POST" && response.ok) {
+          if (typeof url === "string" && url.indexOf("/api/workspace/") !== -1) {
+            var clone = response.clone();
+            clone.json().then(function(data) {
+              if (data.ok) {
+                setTimeout(function() { window.location.reload(); }, 600);
+              }
+            }).catch(function() {});
+          }
+        }
+        return response;
+      });
+    };
+
+    var _origFetch2 = window.fetch;
+    // (already patched above, the JSON check for graph_updated handles it)
+  })();
+  </script>
+
+</body>
+</html>
