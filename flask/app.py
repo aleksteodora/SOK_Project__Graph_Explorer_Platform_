@@ -398,22 +398,26 @@ def api_message():
     sk = _ensure_session()
     body = request.get_json(silent=True) or {}
     command = body.get("message", "").strip()
+    silent = body.get("silent") is True
 
     if not command:
         return jsonify({"response": None, "error": "Empty command"})
 
     msgs = _messages(sk)
-    msgs.append({"text": command, "type": "cli-cmd"})
+    if not silent:
+        msgs.append({"text": command, "type": "cli-cmd"})
 
     ws = _active_workspace(sk)
     if ws is None:
         err = "No active workspace. Create or select one first."
-        msgs.append({"text": err, "type": "cli-err"})
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
         return jsonify({"response": None, "error": err})
 
     if not ws.is_loaded():
         err = "Workspace has no loaded graph."
-        msgs.append({"text": err, "type": "cli-err"})
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
         return jsonify({"response": None, "error": err})
 
     try:
@@ -421,14 +425,16 @@ def api_message():
 
         if result.strip().startswith("<script>") or result.strip().startswith("<svg"):
             friendly = "Query applied."
-            msgs.append({"text": friendly, "type": "cli-out"})
+            if not silent:
+                msgs.append({"text": friendly, "type": "cli-out"})
             return jsonify({
                 "response": friendly,
                 "error": None,
                 "graph_html": result,
             })
 
-        msgs.append({"text": result, "type": "cli-out"})
+        if not silent:
+            msgs.append({"text": result, "type": "cli-out"})
 
         graph_html = None
         cmd_word = command.strip().split()[0] if command.strip() else ""
@@ -449,11 +455,56 @@ def api_message():
     except (InvalidCommandError, WorkspaceError, ValueError,
             FilterParseError, FilterTypeError) as exc:
         err = str(exc)
-        msgs.append({"text": err, "type": "cli-err"})
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
         return jsonify({"response": None, "error": err})
     except Exception as exc:
         err = f"Unexpected error: {exc}"
-        msgs.append({"text": err, "type": "cli-err"})
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
+        return jsonify({"response": None, "error": err})
+
+
+@app.post("/graph_visualizer/api/queries/reset/")
+def api_queries_reset():
+    sk = _ensure_session()
+    body = request.get_json(silent=True) or {}
+    silent = body.get("silent") is True
+
+    msgs = _messages(sk)
+    ws = _active_workspace(sk)
+    if ws is None:
+        err = "No active workspace. Create or select one first."
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
+        return jsonify({"response": None, "error": err})
+
+    if not ws.is_loaded():
+        err = "Workspace has no loaded graph."
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
+        return jsonify({"response": None, "error": err})
+
+    try:
+        graph_html = ws.reset()
+        response = "Queries reset."
+        if not silent:
+            msgs.append({"text": response, "type": "cli-out"})
+        return jsonify({
+            "response": response,
+            "error": None,
+            "graph_html": graph_html,
+        })
+    except (WorkspaceError, ValueError,
+            FilterParseError, FilterTypeError) as exc:
+        err = str(exc)
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
+        return jsonify({"response": None, "error": err})
+    except Exception as exc:
+        err = f"Unexpected error: {exc}"
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
         return jsonify({"response": None, "error": err})
 
 

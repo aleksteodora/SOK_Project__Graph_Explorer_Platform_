@@ -10,10 +10,19 @@
   const chipsBox = document.getElementById('fb-chips');
   const mainView = document.getElementById('main-view');
 
-  const filters = [];   // [{ raw, attribute, operand, value, level }]
-  const searches = [];  // [{ raw, term }]
-  let level = 0;        // G0 → G1 → G2 …
-  let searchTerm = '';
+  const queries = []; // ordered: [{ type: 'filter'|'search', ... }]
+  let operationChain = Promise.resolve();
+
+  function resolveApiUrl(relativePath, overrideKey) {
+    const override = window[overrideKey];
+    if (typeof override === 'string' && override.trim()) {
+      return override;
+    }
+    return relativePath;
+  }
+
+  const POST_MESSAGE_URL = resolveApiUrl('api/message/', '__GV_MESSAGE_API_URL');
+  const POST_QUERIES_RESET_URL = resolveApiUrl('api/queries/reset/', '__GV_QUERIES_RESET_API_URL');
 
   function parseExpression(raw) {
     const parts = raw.trim().split(/\s+/);
@@ -25,198 +34,422 @@
     };
   }
 
+  function getFilters() {
+    const out = [];
+    let level = 0;
+    queries.forEach((entry) => {
+      if (entry.type !== 'filter') return;
+      out.push({
+        raw: entry.raw,
+        attribute: entry.attribute,
+        operand: entry.operand,
+        value: entry.value,
+        level,
+      });
+      level += 1;
+    });
+    return out;
+  }
+
+  function getSearches() {
+    return queries
+      .filter((entry) => entry.type === 'search')
+      .map((entry) => entry.term);
+  }
+
+  function getSearch() {
+    const searches = getSearches();
+    return searches.length ? searches[searches.length - 1] : '';
+  }
+
+  function getLevel() {
+    return getFilters().length;
+  }
+
+  function buildState() {
+    const filters = getFilters();
+    const searches = getSearches();
+    const level = filters.length;
+    const term = searches.length ? searches[searches.length - 1] : '';
+    return {
+      filters,
+      searches,
+      level,
+      term,
+      query: term,
+    };
+  }
+
+  function dispatchMainEvent(name, detail) {
+    if (!mainView) return;
+    mainView.dispatchEvent(new CustomEvent(name, {
+      detail,
+      bubbles: true,
+    }));
+  }
+
+  function callHook(hookName, ...args) {
+    const api = window.GraphFilterBar;
+    const hook = api && api[hookName];
+    if (typeof hook === 'function') {
+      try {
+        hook(...args);
+      } catch (e) {
+        return;
+      }
+    }
+  }
+
+  function reportError(error) {
+    const msg = (error && error.message) ? error.message : String(error || 'Unknown error');
+    dispatchMainEvent('gv:query-error', Object.assign({ error: msg }, buildState()));
+    callHook('onError', msg);
+  }
+
+  function executeGraphHtml(graphHtml) {
+    if (!graphHtml || typeof graphHtml !== 'string') return;
+
+    const tmp = document.createElement('div');
+    tmp.innerHTML = graphHtml;
+    const scripts = tmp.querySelectorAll('script');
+    scripts.forEach((srcScript) => {
+      const newScript = document.createElement('script');
+      newScript.textContent = srcScript.textContent;
+      document.body.appendChild(newScript);
+    });
+  }
+
+  function postJson(url, payload) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {}),
+    }).then((r) => r.json());
+  }
+
+  function runCliCommand(command) {
+    return postJson(POST_MESSAGE_URL, {
+      message: command,
+      silent: true,
+    }).then((data) => {
+      if (data.error) throw new Error(data.error);
+      executeGraphHtml(data.graph_html);
+      return data;
+    });
+  }
+
+  function resetServerQueries() {
+    return postJson(POST_QUERIES_RESET_URL, {
+      silent: true,
+    }).then((data) => {
+      if (data.error) throw new Error(data.error);
+      executeGraphHtml(data.graph_html);
+      return data;
+    });
+  }
+
+  function replayAllQueries() {
+    return resetServerQueries().then(() => {
+      let sequence = Promise.resolve();
+      queries.forEach((entry) => {
+        const command = entry.type === 'filter'
+          ? ('filter ' + entry.raw)
+          : ('search ' + entry.term);
+        sequence = sequence.then(() => runCliCommand(command));
+      });
+      return sequence;
+    });
+  }
+
+  function queueOperation(operation) {
+    operationChain = operationChain
+      .then(() => operation())
+      .catch((error) => {
+        reportError(error);
+      });
+    return operationChain;
+  }
+
   function renderChips() {
     chipsBox.innerHTML = '';
 
-    filters.forEach((f, i) => {
+    queries.forEach((entry, index) => {
       const chip = document.createElement('span');
       chip.className = 'fb-chip';
 
-      const txt = document.createTextNode(f.attribute + ' ' + f.operand + ' ' + f.value);
+      const text = entry.type === 'filter'
+        ? (entry.attribute + ' ' + entry.operand + ' ' + entry.value)
+        : ('search: ' + entry.term);
+
+      const txt = document.createTextNode(text);
       chip.appendChild(txt);
 
       const x = document.createElement('button');
       x.className = 'fb-chip-x';
       x.textContent = '\u00d7';
-      x.addEventListener('click', () => removeFilter(i));
-      chip.appendChild(x);
-
-      chipsBox.appendChild(chip);
-    });
-
-    searches.forEach((s, i) => {
-      const chip = document.createElement('span');
-      chip.className = 'fb-chip';
-
-      const txt = document.createTextNode('search: ' + s.term);
-      chip.appendChild(txt);
-
-      const x = document.createElement('button');
-      x.className = 'fb-chip-x';
-      x.textContent = '\u00d7';
-      x.addEventListener('click', () => removeSearch(i));
+      x.addEventListener('click', () => {
+        queueOperation(() => removeQueryByGlobalIndex(index));
+      });
       chip.appendChild(x);
 
       chipsBox.appendChild(chip);
     });
   }
 
-  function addFilter() {
-    const raw = input.value.trim();
-    if (!raw) return;
-
+  function addFilterRaw(raw) {
     const parsed = parseExpression(raw);
-    if (!parsed) return;
+    if (!parsed) {
+      throw new Error("Filter must follow format: '<attribute> <comparator> <value>'.");
+    }
 
-    level++;
     const entry = {
+      type: 'filter',
       raw,
       attribute: parsed.attribute,
       operand:   parsed.operand,
       value:     parsed.value,
-      level:     level - 1,
     };
-    filters.push(entry);
-    input.value = '';
+    queries.push(entry);
     renderChips();
 
-    if (mainView) {
-      mainView.dispatchEvent(new CustomEvent('gv:filter-add', {
-        detail: { filter: entry, filters: filters.slice(), level },
-        bubbles: true,
-      }));
-    }
+    return runCliCommand('filter ' + raw)
+      .then(() => {
+        const state = buildState();
+        const filter = {
+          raw: entry.raw,
+          attribute: entry.attribute,
+          operand: entry.operand,
+          value: entry.value,
+          level: state.level - 1,
+        };
+        dispatchMainEvent('gv:filter-add', Object.assign({ filter }, state));
+        callHook('onAdd', filter, state.filters.slice(), state.level);
+      })
+      .catch((error) => {
+        queries.pop();
+        renderChips();
+        throw error;
+      });
   }
 
-  function removeFilter(index) {
-    const removed = filters.splice(index, 1);
-    level = filters.length;
+  function addSearchRaw(raw) {
+    const term = String(raw || '').trim();
+    if (!term) return Promise.resolve();
+
+    const entry = {
+      type: 'search',
+      raw: term,
+      term,
+    };
+    queries.push(entry);
     renderChips();
 
-    if (mainView) {
-      mainView.dispatchEvent(new CustomEvent('gv:filter-remove', {
-        detail: { removed, filters: filters.slice(), level },
-        bubbles: true,
-      }));
-    }
+    return runCliCommand('search ' + term)
+      .then(() => {
+        const state = buildState();
+        dispatchMainEvent('gv:search', Object.assign({ term, query: term }, state));
+        callHook('onSearch', term, state.searches.slice(), state.level);
+      })
+      .catch((error) => {
+        queries.pop();
+        renderChips();
+        throw error;
+      });
   }
 
-  function resetFilters() {
-    const old = filters.splice(0);
-    level = 0;
-    input.value = '';
+  function removeQueryByGlobalIndex(index) {
+    if (index < 0 || index >= queries.length) return Promise.resolve();
+
+    const removed = queries.splice(index, 1)[0];
     renderChips();
 
-    if (mainView) {
-      mainView.dispatchEvent(new CustomEvent('gv:filter-reset', {
-        detail: { removed: old, filters: [], level: 0 },
-        bubbles: true,
-      }));
-    }
+    return replayAllQueries()
+      .then(() => {
+        const state = buildState();
+        if (removed.type === 'filter') {
+          dispatchMainEvent('gv:filter-remove', Object.assign({ removed: [removed] }, state));
+          callHook('onRemove', [removed], state.filters.slice(), state.level);
+        } else {
+          dispatchMainEvent('gv:search-remove', Object.assign({
+            removed: [removed],
+            term: state.term,
+            query: state.query,
+          }, state));
+          callHook('onSearchRemove', [removed], state.searches.slice(), state.level);
+        }
+      })
+      .catch((error) => {
+        queries.splice(index, 0, removed);
+        renderChips();
+        throw error;
+      });
   }
 
-  function applySearch() {
-    const term = (searchInput ? searchInput.value : '').trim();
-    if (!term) return;
-
-    searchTerm = term;
-    searches.push({ raw: term, term });
-    if (searchInput) searchInput.value = '';
-    renderChips();
-
-    if (mainView) {
-      mainView.dispatchEvent(new CustomEvent('gv:search', {
-        detail: {
-          term,
-          query: term,
-          searches: searches.map(s => s.term),
-          filters: filters.slice(),
-          level,
-        },
-        bubbles: true,
-      }));
+  function removeFilterByIndex(filterIndex) {
+    let seen = -1;
+    for (let i = 0; i < queries.length; i += 1) {
+      if (queries[i].type !== 'filter') continue;
+      seen += 1;
+      if (seen === filterIndex) {
+        return removeQueryByGlobalIndex(i);
+      }
     }
+    return Promise.resolve();
   }
 
-  function removeSearch(index) {
-    const removed = searches.splice(index, 1);
-    searchTerm = searches.length ? searches[searches.length - 1].term : '';
+  function removeSearchByIndex(searchIndex) {
+    let seen = -1;
+    for (let i = 0; i < queries.length; i += 1) {
+      if (queries[i].type !== 'search') continue;
+      seen += 1;
+      if (seen === searchIndex) {
+        return removeQueryByGlobalIndex(i);
+      }
+    }
+    return Promise.resolve();
+  }
+
+  function clearSearches() {
+    const previousQueries = queries.slice();
+    const removed = previousQueries.filter((entry) => entry.type === 'search');
+    if (!removed.length) return Promise.resolve();
+
+    const nextQueries = previousQueries.filter((entry) => entry.type !== 'search');
+    queries.splice(0, queries.length, ...nextQueries);
     renderChips();
 
-    if (mainView) {
-      mainView.dispatchEvent(new CustomEvent('gv:search-remove', {
-        detail: {
+    return replayAllQueries()
+      .then(() => {
+        const state = buildState();
+        dispatchMainEvent('gv:search-reset', Object.assign({
           removed,
-          term: searchTerm,
-          query: searchTerm,
-          searches: searches.map(s => s.term),
-          filters: filters.slice(),
-          level,
-        },
-        bubbles: true,
-      }));
-    }
-  }
-
-  function resetSearch() {
-    const old = searches.splice(0);
-    searchTerm = '';
-    if (searchInput) searchInput.value = '';
-    renderChips();
-
-    if (mainView) {
-      mainView.dispatchEvent(new CustomEvent('gv:search-reset', {
-        detail: {
-          removed: old,
-          term: '',
-          query: '',
-          searches: [],
-          filters: filters.slice(),
-          level,
-        },
-        bubbles: true,
-      }));
-    }
+          term: state.term,
+          query: state.query,
+        }, state));
+        callHook('onSearchReset');
+      })
+      .catch((error) => {
+        queries.splice(0, queries.length, ...previousQueries);
+        renderChips();
+        throw error;
+      });
   }
 
   function resetAll() {
-    resetFilters();
-    resetSearch();
+    const previousQueries = queries.slice();
+    const removedFilters = getFilters();
+    const removedSearches = getSearches();
+
+    queries.splice(0, queries.length);
+    if (input) input.value = '';
+    if (searchInput) searchInput.value = '';
+    renderChips();
+
+    return resetServerQueries()
+      .then(() => {
+        const state = buildState();
+        dispatchMainEvent('gv:filter-reset', Object.assign({
+          removed: removedFilters,
+        }, state));
+        dispatchMainEvent('gv:search-reset', Object.assign({
+          removed: removedSearches,
+          term: '',
+          query: '',
+        }, state));
+        callHook('onReset');
+        callHook('onSearchReset');
+      })
+      .catch((error) => {
+        queries.splice(0, queries.length, ...previousQueries);
+        renderChips();
+        throw error;
+      });
   }
 
-  applyBtn.addEventListener('click', addFilter);
-  if (resetBtn) resetBtn.addEventListener('click', resetAll);
-  if (searchBtn) searchBtn.addEventListener('click', applySearch);
+  function onApplyClick() {
+    const raw = (input ? input.value : '').trim();
+    if (!raw) return;
+    if (input) input.value = '';
+    queueOperation(() => addFilterRaw(raw));
+  }
 
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); addFilter(); }
-    if (e.key === 'Escape') { input.value = ''; input.blur(); }
-  });
+  function onSearchClick() {
+    const raw = (searchInput ? searchInput.value : '').trim();
+    if (!raw) return;
+    if (searchInput) searchInput.value = '';
+    queueOperation(() => addSearchRaw(raw));
+  }
+
+  if (applyBtn) applyBtn.addEventListener('click', onApplyClick);
+  if (searchBtn) searchBtn.addEventListener('click', onSearchClick);
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      queueOperation(() => resetAll());
+    });
+  }
+
+  if (input) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        onApplyClick();
+      }
+      if (e.key === 'Escape') {
+        input.value = '';
+        input.blur();
+      }
+    });
+  }
 
   if (searchInput) {
     searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); applySearch(); }
-      if (e.key === 'Escape') { e.preventDefault(); resetSearch(); searchInput.blur(); }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        onSearchClick();
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        searchInput.value = '';
+        searchInput.blur();
+      }
     });
   }
 
   window.GraphFilterBar = {
-    getFilters()  { return filters.slice(); },
-    getLevel()    { return level; },
-    getSearch()   { return searchTerm; },
-    getSearches() { return searches.map(s => s.term); },
-    add(raw)      { input.value = raw; addFilter(); },
-    remove(index) { removeFilter(index); },
-    reset()       { resetAll(); },
-    search(raw)   { if (searchInput) searchInput.value = raw || ''; applySearch(); },
-    removeSearch(index) { removeSearch(index); },
-    clearSearch() { resetSearch(); },
+    getFilters()  { return getFilters(); },
+    getLevel()    { return getLevel(); },
+    getSearch()   { return getSearch(); },
+    getSearches() { return getSearches(); },
+    add(raw) {
+      const value = String(raw || '').trim();
+      if (!value) return;
+      queueOperation(() => addFilterRaw(value));
+    },
+    remove(index) {
+      queueOperation(() => removeFilterByIndex(index));
+    },
+    reset() {
+      queueOperation(() => resetAll());
+    },
+    search(raw) {
+      const value = String(raw || '').trim();
+      if (!value) return;
+      queueOperation(() => addSearchRaw(value));
+    },
+    removeSearch(index) {
+      queueOperation(() => removeSearchByIndex(index));
+    },
+    clearSearch() {
+      queueOperation(() => clearSearches());
+    },
 
     onAdd:    null,   // callback(entry, allFilters, level)
     onRemove: null,   // callback(removed, allFilters, level)
     onReset:  null,   // callback()
     onSearch: null,   // callback(term)
     onSearchReset: null, // callback()
+    onSearchRemove: null,
+    onError: null,
   };
 
 })();
