@@ -72,6 +72,7 @@
           var newScript = document.createElement("script");
           newScript.textContent = scripts[s].textContent;
           document.body.appendChild(newScript);
+          newScript.remove()
         }
       }
     }).catch(function() {
