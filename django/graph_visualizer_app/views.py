@@ -11,13 +11,13 @@ Provides:
 from __future__ import annotations
 
 import json
-import uuid
 import sys
+import uuid
 from pathlib import Path
 from typing import Optional
 
-from django.shortcuts import render
 from django.http import JsonResponse
+from django.shortcuts import render
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -36,10 +36,6 @@ except ImportError:
         return result
 
 # ── Platform / API imports ────────────────────────────────────────────
-from api import (
-    Graph, Node, Edge,
-    DataSourcePlugin, VisualizerPlugin, PluginParameter,
-)
 
 # Use normal imports from local project sources even when not installed in venv.
 # Importing through `src.platform` avoids the stdlib `platform` name clash.
