@@ -125,6 +125,10 @@ def index(request):
     main_body   = _read_platform_template("graph-visualizer-mainview-body.html")
     main_script = _read_platform_template("graph-visualizer-mainview-script.html")
 
+    fv_style      = _read_platform_template("graph-visualizer-filterview-style.html")
+    fv_body       = _read_platform_template("graph-visualizer-filterview-body.html")
+    fv_script_raw = _read_platform_template("graph-visualizer-filterview-script.html")
+
     ws_style      = _read_platform_template("graph-visualizer-workspace-style.html")
     ws_body       = _read_platform_template("graph-visualizer-workspace-body.html")
     ws_script_raw = _read_platform_template("graph-visualizer-workspace-script.html")
@@ -168,6 +172,12 @@ def index(request):
         visualizer_select_api=f"{base_url}/api/visualizer/select/",
     )
 
+    fv_script = _render_jinja(
+        fv_script_raw,
+        message_post_url=f"{base_url}/api/message/",
+        queries_reset_url=f"{base_url}/api/queries/reset/",
+    )
+
     # ── Render graph visualization (if workspace is active) ───────────
     graph_html = ""
     ws = _active_workspace(sk)
@@ -184,6 +194,9 @@ def index(request):
         "main_style": main_style,
         "main_body": main_body,
         "main_script": main_script,
+        "fv_style": fv_style,
+        "fv_body": fv_body,
+        "fv_script": fv_script,
         "ws_style": ws_style,
         "ws_body": ws_body,
         "ws_script": ws_script,
@@ -372,23 +385,27 @@ def api_message(request):
     sk = _ensure_session(request)
     body = json.loads(request.body)
     command = body.get("message", "").strip()
+    silent = body.get("silent") is True
 
     if not command:
         return JsonResponse({"response": None, "error": "Empty command"})
 
     msgs = _messages(sk)
-    msgs.append({"text": command, "type": "cli-cmd"})
+    if not silent:
+        msgs.append({"text": command, "type": "cli-cmd"})
 
     # Need an active workspace
     ws = _active_workspace(sk)
     if ws is None:
         err = "No active workspace. Create or select one first."
-        msgs.append({"text": err, "type": "cli-err"})
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
         return JsonResponse({"response": None, "error": err})
 
     if not ws.is_loaded():
         err = "Workspace has no loaded graph."
-        msgs.append({"text": err, "type": "cli-err"})
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
         return JsonResponse({"response": None, "error": err})
 
     try:
@@ -397,7 +414,8 @@ def api_message(request):
         # search / filter commands return rendered HTML directly
         if result.strip().startswith("<script>") or result.strip().startswith("<svg"):
             friendly = "Query applied."
-            msgs.append({"text": friendly, "type": "cli-out"})
+            if not silent:
+                msgs.append({"text": friendly, "type": "cli-out"})
             return JsonResponse({
                 "response": friendly, "error": None,
                 "graph_html": result,
@@ -405,7 +423,8 @@ def api_message(request):
 
         # CRUD commands (create-node, delete-node, edit-node, …)
         # return text — but the graph was modified, so re-render it
-        msgs.append({"text": result, "type": "cli-out"})
+        if not silent:
+            msgs.append({"text": result, "type": "cli-out"})
 
         # Re-render for commands that modify the graph
         graph_html = None
@@ -425,11 +444,59 @@ def api_message(request):
     except (InvalidCommandError, WorkspaceError, ValueError,
             FilterParseError, FilterTypeError) as exc:
         err = str(exc)
-        msgs.append({"text": err, "type": "cli-err"})
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
         return JsonResponse({"response": None, "error": err})
     except Exception as exc:
         err = f"Unexpected error: {exc}"
-        msgs.append({"text": err, "type": "cli-err"})
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
+        return JsonResponse({"response": None, "error": err})
+
+
+def api_queries_reset(request):
+    """POST → reset active query chain and return freshly rendered graph HTML."""
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+
+    sk = _ensure_session(request)
+    body = json.loads(request.body)
+    silent = body.get("silent") is True
+
+    msgs = _messages(sk)
+    ws = _active_workspace(sk)
+    if ws is None:
+        err = "No active workspace. Create or select one first."
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
+        return JsonResponse({"response": None, "error": err})
+
+    if not ws.is_loaded():
+        err = "Workspace has no loaded graph."
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
+        return JsonResponse({"response": None, "error": err})
+
+    try:
+        graph_html = ws.reset()
+        response = "Queries reset."
+        if not silent:
+            msgs.append({"text": response, "type": "cli-out"})
+        return JsonResponse({
+            "response": response,
+            "error": None,
+            "graph_html": graph_html,
+        })
+    except (WorkspaceError, ValueError,
+            FilterParseError, FilterTypeError) as exc:
+        err = str(exc)
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
+        return JsonResponse({"response": None, "error": err})
+    except Exception as exc:
+        err = f"Unexpected error: {exc}"
+        if not silent:
+            msgs.append({"text": err, "type": "cli-err"})
         return JsonResponse({"response": None, "error": err})
 
 

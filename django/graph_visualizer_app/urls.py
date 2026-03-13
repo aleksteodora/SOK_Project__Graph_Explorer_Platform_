@@ -16,6 +16,7 @@ urlpatterns = [
     # ── CLI API ───────────────────────────────────────────────────────
     path("api/messages/",          views.api_messages,         name="api_messages"),
     path("api/message/",           views.api_message,          name="api_message"),
+    path("api/queries/reset/",     views.api_queries_reset,    name="api_queries_reset"),
 
     # ── Graph data API ────────────────────────────────────────────────
     path("api/graph/",             views.api_graph,            name="api_graph"),

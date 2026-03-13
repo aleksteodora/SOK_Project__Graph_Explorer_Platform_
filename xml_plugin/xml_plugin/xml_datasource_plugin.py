@@ -132,6 +132,7 @@ class XmlDataSource(DataSourcePlugin):
         referenced_id = xml_node.attrib.get("ref")
 
         node = Node(str(self._node_counter))
+        node.set_attribute("name", xml_node.tag)
         self._graph.add_node(node)
         self._node_counter += 1
 

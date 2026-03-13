@@ -10,6 +10,7 @@
 
   <!-- ── Platform component styles ─────────────────────────────────── -->
   {{ main_style }}
+  {{ fv_style }}
   {{ ws_style }}
   {{ cli_style }}
   {{ bv_style }}
@@ -85,6 +86,16 @@
       min-width: 0;
     }
 
+    #toolbar-fv #filter-bar {
+  position: static;
+  transform: none;
+  left: auto;
+  top: auto;
+  align-items: flex-start;
+  width: 100%;
+  padding-top: 6px;
+}
+
     /* Override tree-view positioning for layout */
     #tree-view {
       position: relative !important;
@@ -129,17 +140,26 @@
   <!-- ════════════════════════════════════════════════════════════════ -->
   <!-- TOOLBAR                                                         -->
   <!-- ════════════════════════════════════════════════════════════════ -->
-  <header id="toolbar">
-    <span class="brand">⬡ Graph Explorer</span>
+    <header id="toolbar">
+      <!-- Gornji red -->
+      <div id="toolbar-row">
+        <span class="brand">⬡ Graph Explorer</span>
 
-    {% if active_workspace_name %}
-      <span class="active-ws">{{ active_workspace_name }}</span>
-    {% endif %}
+        {% if active_workspace_name %}
+          <span class="active-ws">{{ active_workspace_name }}</span>
+        {% endif %}
 
-    {{ ws_body }}
-    {{ vp_body }}
-    {{ cli_body }}
-  </header>
+        {{ ws_body }}
+        {{ vp_body }}
+        {{ cli_body }}
+      <!-- Donji red -->
+      <div id="toolbar-fv">
+        {{ fv_body }}
+      </div>
+      </div>
+
+
+</header>
 
   <!-- ════════════════════════════════════════════════════════════════ -->
   <!-- MAIN CONTENT                                                    -->
@@ -172,6 +192,9 @@
 
   <!-- 1. Main-view controller (pan, zoom, drag, tooltip) -->
   {{ main_script }}
+
+  <!-- 1.1 Filter/search bar -->
+  {{ fv_script }}
 
   <!-- 2. Bird-view minimap -->
   {{ bv_script }}
