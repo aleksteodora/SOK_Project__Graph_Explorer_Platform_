@@ -176,6 +176,10 @@ def index():
     main_body = _read_platform_template("graph-visualizer-mainview-body.html")
     main_script = _read_platform_template("graph-visualizer-mainview-script.html")
 
+    fv_style = _read_platform_template("graph-visualizer-filterview-style.html")
+    fv_body = _read_platform_template("graph-visualizer-filterview-body.html")
+    fv_script = _read_platform_template("graph-visualizer-filterview-script.html")
+
     ws_style = _read_platform_template("graph-visualizer-workspace-style.html")
     ws_body = _read_platform_template("graph-visualizer-workspace-body.html")
     ws_script_raw = _read_platform_template("graph-visualizer-workspace-script.html")
@@ -232,6 +236,9 @@ def index():
         "main_style": main_style,
         "main_body": main_body,
         "main_script": main_script,
+        "fv_style": fv_style,
+        "fv_body": fv_body,
+        "fv_script": fv_script,
         "ws_style": ws_style,
         "ws_body": ws_body,
         "ws_script": ws_script,

@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 
   {{ main_style|safe }}
+  {{ fv_style|safe }}
   {{ ws_style|safe }}
   {{ cli_style|safe }}
   {{ bv_style|safe }}
@@ -36,6 +37,33 @@
       box-shadow: 0 1px 4px rgba(0,0,0,.04);
       z-index: 100;
       flex-wrap: wrap;
+    }
+
+    #toolbar-filter {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      min-width: 0;
+    }
+
+    #toolbar-filter #filter-bar {
+      position: static;
+      top: auto;
+      left: auto;
+      transform: none;
+      z-index: auto;
+      align-items: flex-end;
+      pointer-events: auto;
+    }
+
+    #toolbar-filter #filter-bar .fb-input-row {
+      box-shadow: none;
+      padding: 4px 8px;
+    }
+
+    #toolbar-filter #filter-bar .fb-chips {
+      justify-content: flex-end;
+      max-width: 100%;
     }
 
     #toolbar .brand {
@@ -127,6 +155,7 @@
     {{ ws_body|safe }}
     {{ vp_body|safe }}
     {{ cli_body|safe }}
+    <div id="toolbar-filter">{{ fv_body|safe }}</div>
   </header>
 
   <div id="app-layout">
@@ -150,6 +179,7 @@
   </div>
 
   {{ main_script|safe }}
+  {{ fv_script|safe }}
   {{ bv_script|safe }}
   {{ tv_script|safe }}
   {{ ws_script|safe }}

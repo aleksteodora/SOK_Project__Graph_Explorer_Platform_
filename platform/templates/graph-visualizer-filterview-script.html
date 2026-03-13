@@ -1,0 +1,223 @@
+<script>
+(function () {
+  'use strict';
+
+  const input    = document.getElementById('fb-input');
+  const applyBtn = document.getElementById('fb-apply');
+  const resetBtn = document.getElementById('fb-reset');
+  const searchInput = document.getElementById('fb-search-input');
+  const searchBtn = document.getElementById('fb-search');
+  const chipsBox = document.getElementById('fb-chips');
+  const mainView = document.getElementById('main-view');
+
+  const filters = [];   // [{ raw, attribute, operand, value, level }]
+  const searches = [];  // [{ raw, term }]
+  let level = 0;        // G0 → G1 → G2 …
+  let searchTerm = '';
+
+  function parseExpression(raw) {
+    const parts = raw.trim().split(/\s+/);
+    if (parts.length < 3) return null;
+    return {
+      attribute: parts[0],
+      operand:   parts[1],
+      value:     parts.slice(2).join(' '),
+    };
+  }
+
+  function renderChips() {
+    chipsBox.innerHTML = '';
+
+    filters.forEach((f, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'fb-chip';
+
+      const txt = document.createTextNode(f.attribute + ' ' + f.operand + ' ' + f.value);
+      chip.appendChild(txt);
+
+      const x = document.createElement('button');
+      x.className = 'fb-chip-x';
+      x.textContent = '\u00d7';
+      x.addEventListener('click', () => removeFilter(i));
+      chip.appendChild(x);
+
+      chipsBox.appendChild(chip);
+    });
+
+    searches.forEach((s, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'fb-chip';
+
+      const txt = document.createTextNode('search: ' + s.term);
+      chip.appendChild(txt);
+
+      const x = document.createElement('button');
+      x.className = 'fb-chip-x';
+      x.textContent = '\u00d7';
+      x.addEventListener('click', () => removeSearch(i));
+      chip.appendChild(x);
+
+      chipsBox.appendChild(chip);
+    });
+  }
+
+  function addFilter() {
+    const raw = input.value.trim();
+    if (!raw) return;
+
+    const parsed = parseExpression(raw);
+    if (!parsed) return;
+
+    level++;
+    const entry = {
+      raw,
+      attribute: parsed.attribute,
+      operand:   parsed.operand,
+      value:     parsed.value,
+      level:     level - 1,
+    };
+    filters.push(entry);
+    input.value = '';
+    renderChips();
+
+    if (mainView) {
+      mainView.dispatchEvent(new CustomEvent('gv:filter-add', {
+        detail: { filter: entry, filters: filters.slice(), level },
+        bubbles: true,
+      }));
+    }
+  }
+
+  function removeFilter(index) {
+    const removed = filters.splice(index, 1);
+    level = filters.length;
+    renderChips();
+
+    if (mainView) {
+      mainView.dispatchEvent(new CustomEvent('gv:filter-remove', {
+        detail: { removed, filters: filters.slice(), level },
+        bubbles: true,
+      }));
+    }
+  }
+
+  function resetFilters() {
+    const old = filters.splice(0);
+    level = 0;
+    input.value = '';
+    renderChips();
+
+    if (mainView) {
+      mainView.dispatchEvent(new CustomEvent('gv:filter-reset', {
+        detail: { removed: old, filters: [], level: 0 },
+        bubbles: true,
+      }));
+    }
+  }
+
+  function applySearch() {
+    const term = (searchInput ? searchInput.value : '').trim();
+    if (!term) return;
+
+    searchTerm = term;
+    searches.push({ raw: term, term });
+    if (searchInput) searchInput.value = '';
+    renderChips();
+
+    if (mainView) {
+      mainView.dispatchEvent(new CustomEvent('gv:search', {
+        detail: {
+          term,
+          query: term,
+          searches: searches.map(s => s.term),
+          filters: filters.slice(),
+          level,
+        },
+        bubbles: true,
+      }));
+    }
+  }
+
+  function removeSearch(index) {
+    const removed = searches.splice(index, 1);
+    searchTerm = searches.length ? searches[searches.length - 1].term : '';
+    renderChips();
+
+    if (mainView) {
+      mainView.dispatchEvent(new CustomEvent('gv:search-remove', {
+        detail: {
+          removed,
+          term: searchTerm,
+          query: searchTerm,
+          searches: searches.map(s => s.term),
+          filters: filters.slice(),
+          level,
+        },
+        bubbles: true,
+      }));
+    }
+  }
+
+  function resetSearch() {
+    const old = searches.splice(0);
+    searchTerm = '';
+    if (searchInput) searchInput.value = '';
+    renderChips();
+
+    if (mainView) {
+      mainView.dispatchEvent(new CustomEvent('gv:search-reset', {
+        detail: {
+          removed: old,
+          term: '',
+          query: '',
+          searches: [],
+          filters: filters.slice(),
+          level,
+        },
+        bubbles: true,
+      }));
+    }
+  }
+
+  function resetAll() {
+    resetFilters();
+    resetSearch();
+  }
+
+  applyBtn.addEventListener('click', addFilter);
+  if (resetBtn) resetBtn.addEventListener('click', resetAll);
+  if (searchBtn) searchBtn.addEventListener('click', applySearch);
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addFilter(); }
+    if (e.key === 'Escape') { input.value = ''; input.blur(); }
+  });
+
+  if (searchInput) {
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); applySearch(); }
+      if (e.key === 'Escape') { e.preventDefault(); resetSearch(); searchInput.blur(); }
+    });
+  }
+
+  window.GraphFilterBar = {
+    getFilters()  { return filters.slice(); },
+    getLevel()    { return level; },
+    getSearch()   { return searchTerm; },
+    getSearches() { return searches.map(s => s.term); },
+    add(raw)      { input.value = raw; addFilter(); },
+    remove(index) { removeFilter(index); },
+    reset()       { resetAll(); },
+    search(raw)   { if (searchInput) searchInput.value = raw || ''; applySearch(); },
+    removeSearch(index) { removeSearch(index); },
+    clearSearch() { resetSearch(); },
+
+    onAdd:    null,   // callback(entry, allFilters, level)
+    onRemove: null,   // callback(removed, allFilters, level)
+    onReset:  null,   // callback()
+    onSearch: null,   // callback(term)
+    onSearchReset: null, // callback()
+  };
+
+})();
+</script>
