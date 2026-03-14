@@ -1,0 +1,139 @@
+{
+  "id": "acme",
+  "name": "Acme Corp",
+  "founded": "2005-03-15",
+  "employees": 142,
+  "revenue": 4750000.50,
+  "ceo": "person:grace",
+  "children": [
+    {
+      "id": "dept:engineering",
+      "name": "Engineering",
+      "floor": 3,
+      "budget": 1200000.00,
+      "head": "person:alice",
+      "members": [
+        {
+          "id": "person:alice",
+          "name": "Alice",
+          "surname": "Novak",
+          "age": 35,
+          "salary": 95000.00,
+          "joined": "2018-06-01",
+          "role": "Lead Engineer"
+        },
+        {
+          "id": "person:bob",
+          "name": "Bob",
+          "surname": "Petrovic",
+          "age": 28,
+          "salary": 72000.00,
+          "joined": "2021-09-13",
+          "role": "Backend Engineer"
+        },
+        {
+          "id": "person:carol",
+          "name": "Carol",
+          "surname": "Jovanovic",
+          "age": 31,
+          "salary": 78000.00,
+          "joined": "2020-02-17",
+          "role": "Frontend Engineer"
+        },
+        {
+          "id": "person:dan",
+          "name": "Dan",
+          "surname": "Markovic",
+          "age": 26,
+          "salary": 65000.00,
+          "joined": "2023-01-09",
+          "role": "Junior Engineer"
+        }
+      ]
+    },
+    {
+      "id": "dept:product",
+      "name": "Product",
+      "floor": 2,
+      "budget": 800000.00,
+      "head": "person:eva",
+      "members": [
+        {
+          "id": "person:eva",
+          "name": "Eva",
+          "surname": "Stojanovic",
+          "age": 40,
+          "salary": 105000.00,
+          "joined": "2015-11-23",
+          "role": "Product Manager"
+        },
+        {
+          "id": "person:frank",
+          "name": "Frank",
+          "surname": "Ilic",
+          "age": 33,
+          "salary": 82000.00,
+          "joined": "2019-05-06",
+          "role": "Product Analyst"
+        }
+      ]
+    },
+    {
+      "id": "dept:hr",
+      "name": "Human Resources",
+      "floor": 1,
+      "budget": 350000.00,
+      "head": "person:grace",
+      "members": [
+        {
+          "id": "person:grace",
+          "name": "Grace",
+          "surname": "Nikolic",
+          "age": 44,
+          "salary": 88000.00,
+          "joined": "2012-07-30",
+          "role": "HR Director"
+        },
+        {
+          "id": "person:henry",
+          "name": "Henry",
+          "surname": "Djordjevic",
+          "age": 29,
+          "salary": 60000.00,
+          "joined": "2022-03-14",
+          "role": "HR Specialist"
+        }
+      ]
+    },
+    {
+      "id": "project:alpha",
+      "name": "Project Alpha",
+      "started": "2023-04-01",
+      "deadline": "2024-03-31",
+      "budget": 500000.00,
+      "status": "active",
+      "owner": "person:alice",
+      "sponsor": "dept:engineering"
+    },
+    {
+      "id": "project:beta",
+      "name": "Project Beta",
+      "started": "2023-09-15",
+      "deadline": "2024-09-14",
+      "budget": 320000.00,
+      "status": "active",
+      "owner": "person:eva",
+      "sponsor": "dept:product"
+    },
+    {
+      "id": "project:gamma",
+      "name": "Project Gamma",
+      "started": "2022-01-10",
+      "deadline": "2022-12-31",
+      "budget": 150000.00,
+      "status": "completed",
+      "owner": "person:bob",
+      "sponsor": "dept:engineering"
+    }
+  ]
+}

@@ -1,12 +1,35 @@
 import json
-import os
-import sys
+from pathlib import Path
 from typing import Any, Dict, List
 
 from api.model.edge import Edge
 from api.model.graph import Graph
 from api.model.node import Node, parse_attribute_value
 from api.plugin.plugin import DataSourcePlugin, PluginParameter
+
+
+def _resolve_platform_data_file(file_name: str) -> Path:
+    requested = Path(str(file_name))
+    if requested.is_absolute():
+        raise ValueError("file_name must be relative to platform/data.")
+    if ".." in requested.parts:
+        raise ValueError("file_name must not contain parent directory segments.")
+
+    current_file = Path(__file__).resolve()
+    search_roots = [Path.cwd(), *current_file.parents]
+    for root in search_roots:
+        data_dir = (root / "platform" / "data").resolve()
+        if not data_dir.is_dir():
+            continue
+
+        file_path = (data_dir / requested).resolve()
+        if file_path == data_dir or data_dir in file_path.parents:
+            return file_path
+
+    raise FileNotFoundError(
+        "Could not locate the platform/data directory. "
+        "Place input files under platform/data."
+    )
 
 
 class JsonDataSource(DataSourcePlugin):
@@ -121,8 +144,7 @@ class JsonDataSource(DataSourcePlugin):
         self._node_counter = 1
         self._edge_counter = 1
 
-        data_dir = os.path.join(sys.prefix, "data")
-        file_path = os.path.join(data_dir, params["file_name"])
+        file_path = _resolve_platform_data_file(params["file_name"])
 
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
