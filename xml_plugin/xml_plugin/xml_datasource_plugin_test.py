@@ -160,7 +160,7 @@ class TestXmlDataSourceEdges(unittest.TestCase):
 class TestXmlDataSourceReturnType(unittest.TestCase):
 
     def test_load_returns_graph(self):
-        from api.src.api.model.graph import Graph
+        from api.model.graph import Graph
         graph = make_graph(TEST_XML)
         self.assertIsInstance(graph, Graph)
 
