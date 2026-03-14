@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Network>
+    <!-- Ciklus: Server 1 -> Database 2 -> Cache 3 -> Server 1 -->
+    <Server id="1">
+        <ip>192.168.1.1</ip>
+        <port>8080</port>
+        <connectsTo ref="2" />
+        <Connections>
+            <Connection ref="5" />
+        </Connections>
+    </Server>
+    
+    <Database id="2">
+        <type>PostgreSQL</type>
+        <port>5432</port>
+        <replicatesTo ref="3" />
+        <Backup>
+            <Target ref="1" />
+        </Backup>
+    </Database>
+    
+    <Cache id="3">
+        <type>Redis</type>
+        <port>6379</port>
+        <dependsOn ref="2" />
+        <Peers>
+            <Peer ref="1" />
+        </Peers>
+    </Cache>
+    
+    <!-- Manji ciklus: API 4 <-> Worker 5 -->
+    <API id="4">
+        <name>REST API</name>
+        <language>Python</language>
+        <calls ref="5" />
+    </API>
+    
+    <Worker id="5">
+        <name>Task Worker</name>
+        <language>Python</language>
+        <queue>celery</queue>
+        <registeredIn ref="4" />
+        <Tasks>
+            <Task ref="6" />
+        </Tasks>
+    </Worker>
+    
+    <!-- Dodatni čvor koji povezuje cikluse -->
+    <MessageQueue id="6">
+        <name>RabbitMQ</name>
+        <type>AMQP</type>
+        <port>5672</port>
+        <usedBy ref="5" />
+        <consumesFrom ref="1" />
+    </MessageQueue>
+    
+    <!-- Samoreferenca (čvor koji referencira sam sebe) -->
+    <Monitor id="7" ref="7">
+        <name>Self Monitor</name>
+        <interval>30</interval>
+        <Monitors>
+            <MonitorTarget ref="7" />
+        </Monitors>
+    </Monitor>
+    
+    <!-- Kompleksniji ciklus preko više nivoa -->
+    <LoadBalancer id="8">
+        <name>HAProxy</name>
+        <routesTo ref="9" />
+        <Config>
+            <Backend ref="10" />
+        </Config>
+    </LoadBalancer>
+    
+    <WebServer id="9">
+        <name>Nginx</name>
+        <port>80</port>
+        <proxiesTo ref="4" />
+        <Upstream>
+            <Server ref="8" />
+        </Upstream>
+    </WebServer>
+    
+    <AppServer id="10">
+        <name>Gunicorn</name>
+        <workers>4</workers>
+        <connectsTo ref="8" />
+        <Apps>
+            <App ref="9" />
+        </Apps>
+    </AppServer>
+</Network>

@@ -149,19 +149,6 @@
     });
   }
 
-  function replayAllQueries() {
-    return resetServerQueries().then(() => {
-      let sequence = Promise.resolve();
-      queries.forEach((entry) => {
-        const command = entry.type === 'filter'
-          ? ('filter ' + entry.raw)
-          : ('search ' + entry.term);
-        sequence = sequence.then(() => runCliCommand(command));
-      });
-      return sequence;
-    });
-  }
-
   function queueOperation(operation) {
     operationChain = operationChain
       .then(() => operation())
@@ -174,7 +161,7 @@
   function renderChips() {
     chipsBox.innerHTML = '';
 
-    queries.forEach((entry, index) => {
+    queries.forEach((entry) => {
       const chip = document.createElement('span');
       chip.className = 'fb-chip';
 
@@ -184,14 +171,6 @@
 
       const txt = document.createTextNode(text);
       chip.appendChild(txt);
-
-      const x = document.createElement('button');
-      x.className = 'fb-chip-x';
-      x.textContent = '\u00d7';
-      x.addEventListener('click', () => {
-        queueOperation(() => removeQueryByGlobalIndex(index));
-      });
-      chip.appendChild(x);
 
       chipsBox.appendChild(chip);
     });
@@ -253,84 +232,6 @@
       })
       .catch((error) => {
         queries.pop();
-        renderChips();
-        throw error;
-      });
-  }
-
-  function removeQueryByGlobalIndex(index) {
-    if (index < 0 || index >= queries.length) return Promise.resolve();
-
-    const removed = queries.splice(index, 1)[0];
-    renderChips();
-
-    return replayAllQueries()
-      .then(() => {
-        const state = buildState();
-        if (removed.type === 'filter') {
-          dispatchMainEvent('gv:filter-remove', Object.assign({ removed: [removed] }, state));
-          callHook('onRemove', [removed], state.filters.slice(), state.level);
-        } else {
-          dispatchMainEvent('gv:search-remove', Object.assign({
-            removed: [removed],
-            term: state.term,
-            query: state.query,
-          }, state));
-          callHook('onSearchRemove', [removed], state.searches.slice(), state.level);
-        }
-      })
-      .catch((error) => {
-        queries.splice(index, 0, removed);
-        renderChips();
-        throw error;
-      });
-  }
-
-  function removeFilterByIndex(filterIndex) {
-    let seen = -1;
-    for (let i = 0; i < queries.length; i += 1) {
-      if (queries[i].type !== 'filter') continue;
-      seen += 1;
-      if (seen === filterIndex) {
-        return removeQueryByGlobalIndex(i);
-      }
-    }
-    return Promise.resolve();
-  }
-
-  function removeSearchByIndex(searchIndex) {
-    let seen = -1;
-    for (let i = 0; i < queries.length; i += 1) {
-      if (queries[i].type !== 'search') continue;
-      seen += 1;
-      if (seen === searchIndex) {
-        return removeQueryByGlobalIndex(i);
-      }
-    }
-    return Promise.resolve();
-  }
-
-  function clearSearches() {
-    const previousQueries = queries.slice();
-    const removed = previousQueries.filter((entry) => entry.type === 'search');
-    if (!removed.length) return Promise.resolve();
-
-    const nextQueries = previousQueries.filter((entry) => entry.type !== 'search');
-    queries.splice(0, queries.length, ...nextQueries);
-    renderChips();
-
-    return replayAllQueries()
-      .then(() => {
-        const state = buildState();
-        dispatchMainEvent('gv:search-reset', Object.assign({
-          removed,
-          term: state.term,
-          query: state.query,
-        }, state));
-        callHook('onSearchReset');
-      })
-      .catch((error) => {
-        queries.splice(0, queries.length, ...previousQueries);
         renderChips();
         throw error;
       });
@@ -426,9 +327,6 @@
       if (!value) return;
       queueOperation(() => addFilterRaw(value));
     },
-    remove(index) {
-      queueOperation(() => removeFilterByIndex(index));
-    },
     reset() {
       queueOperation(() => resetAll());
     },
@@ -437,19 +335,11 @@
       if (!value) return;
       queueOperation(() => addSearchRaw(value));
     },
-    removeSearch(index) {
-      queueOperation(() => removeSearchByIndex(index));
-    },
-    clearSearch() {
-      queueOperation(() => clearSearches());
-    },
 
     onAdd:    null,   // callback(entry, allFilters, level)
-    onRemove: null,   // callback(removed, allFilters, level)
     onReset:  null,   // callback()
     onSearch: null,   // callback(term)
     onSearchReset: null, // callback()
-    onSearchRemove: null,
     onError: null,
   };
 

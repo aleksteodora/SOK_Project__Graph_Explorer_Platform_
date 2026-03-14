@@ -1,0 +1,85 @@
+{
+  "id": "network",
+  "children": [
+    {
+      "id": "server:1",
+      "type": "Server",
+      "ip": "192.168.1.1",
+      "port": 8080,
+      "connectsTo": "2",
+      "connections": "5"
+    },
+    {
+      "id": "database:2",
+      "type": "Database",
+      "dbType": "PostgreSQL",
+      "port": 5432,
+      "replicatesTo": "3",
+      "backupTarget": "1"
+    },
+    {
+      "id": "cache:3",
+      "type": "Cache",
+      "cacheType": "Redis",
+      "port": 6379,
+      "dependsOn": "2",
+      "peer": "1"
+    },
+    {
+      "id": "api:4",
+      "type": "API",
+      "name": "REST API",
+      "language": "Python",
+      "calls": "5"
+    },
+    {
+      "id": "worker:5",
+      "type": "Worker",
+      "name": "Task Worker",
+      "language": "Python",
+      "queue": "celery",
+      "registeredIn": "4",
+      "task": "6"
+    },
+    {
+      "id": "mq:6",
+      "type": "MessageQueue",
+      "name": "RabbitMQ",
+      "mqType": "AMQP",
+      "port": 5672,
+      "usedBy": "5",
+      "consumesFrom": "1"
+    },
+    {
+      "id": "monitor:7",
+      "type": "Monitor",
+      "name": "Self Monitor",
+      "interval": 30,
+      "selfRef": "7",
+      "monitorTarget": "7"
+    },
+    {
+      "id": "loadbalancer:8",
+      "type": "LoadBalancer",
+      "name": "HAProxy",
+      "routesTo": "9",
+      "backend": "10"
+    },
+    {
+      "id": "webserver:9",
+      "type": "WebServer",
+      "name": "Nginx",
+      "port": 80,
+      "proxiesTo": "4",
+      "upstream": "8"
+    },
+    {
+      "id": "appserver:10",
+      "type": "AppServer",
+      "name": "Gunicorn",
+      "workers": 4,
+      "connectsTo": "8",
+      "app": "9"
+    }
+  ]
+}
