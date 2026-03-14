@@ -110,13 +110,17 @@ python app.py
 
 ## Running Tests
 
+**Linux / macOS**
 ```bash
-pytest
+chmod +x test.sh
+./test.sh
 ```
 
-Run tests for a specific component:
-```bash
-pytest api/test_api/
-pytest csv_plugin/csv_plugin/
-pytest json_plugin/json_plugin/
+**Windows (PowerShell)**
+```powershell
+.\test.ps1
 ```
+
+The test scripts will automatically set up the virtual environment, install all dependencies, and run the full test suite.
+
+---
