@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graph-visualizer-datasource-csv"
+version = "1.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "graph-api"
+]
+
+[project.entry-points."graph.data_source"]
+datasource_csv = "csv_plugin.csv_datasource_plugin:CsvDataSource"
+
+[tool.setuptools.packages.find]
+where = ["."]
