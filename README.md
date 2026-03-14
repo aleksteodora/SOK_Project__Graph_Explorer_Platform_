@@ -27,8 +27,8 @@ graph-explorer-platform/
 ├── csv_plugin/           # Data source plugin — CSV
 ├── simple_visualizer/    # Visualizer plugin — Simple (force layout)
 ├── block_visualizer/     # Visualizer plugin — Block
-├── graph_explorer/       # Django web application
-└── graph_explorer_flask/ # Flask web application
+├── django/               # Django web application
+└── flask/                # Flask web application
 ```
 
 ---
@@ -59,7 +59,6 @@ pip install -e ./xml_plugin
 pip install -e ./csv_plugin
 pip install -e ./simple_visualizer
 pip install -e ./block_visualizer
-pip install -e ./graph_explorer
 
 # 3. Install test dependencies
 pip install pytest
@@ -71,7 +70,7 @@ pip install pytest
 
 **Django**
 ```bash
-cd graph_explorer
+cd django
 python manage.py migrate
 python manage.py runserver
 ```
@@ -79,7 +78,7 @@ Open http://127.0.0.1:8000
 
 **Flask**
 ```bash
-cd graph_explorer_flask
+cd flask
 python app.py
 ```
 Open http://127.0.0.1:5000
@@ -94,6 +93,7 @@ pytest
 
 Run tests for a specific component:
 ```bash
-pytest api/tests/
-pytest platform/tests/
+pytest api/test_api/
+pytest csv_plugin/csv_plugin/
+pytest json_plugin/json_plugin/
 ```
