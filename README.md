@@ -40,12 +40,48 @@ graph-explorer-platform/
 
 ---
 
-## Installation
+## Running the Application
 
+### Django
+
+**Linux / macOS**
+```bash
+chmod +x run_django.sh
+./run_django.sh
+```
+
+**Windows (PowerShell)**
+```powershell
+.\run_django.ps1
+```
+
+Open http://127.0.0.1:8000
+
+---
+
+### Flask
+
+**Linux / macOS**
+```bash
+chmod +x run_flask.sh
+./run_flask.sh
+```
+
+**Windows (PowerShell)**
+```powershell
+.\run_flask.ps1
+```
+
+Open http://127.0.0.1:5000
+
+---
+
+### Manual Setup (alternative)
+
+If you prefer to set up manually:
 ```bash
 # 1. Create and activate virtual environment
 python -m venv venv
-
 # Windows
 venv\Scripts\activate
 # Linux / macOS
@@ -60,28 +96,15 @@ pip install -e ./csv_plugin
 pip install -e ./simple_visualizer
 pip install -e ./block_visualizer
 
-# 3. Install test dependencies
-pip install pytest
-```
-
----
-
-## Running the Application
-
-**Django**
-```bash
+# 3. Run Django
 cd django
 python manage.py migrate
 python manage.py runserver
-```
-Open http://127.0.0.1:8000
 
-**Flask**
-```bash
+# or Run Flask
 cd flask
 python app.py
 ```
-Open http://127.0.0.1:5000
 
 ---
 
