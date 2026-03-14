@@ -79,30 +79,73 @@
   }
 
   function buildTree(nodes, links) {
-    const byId     = {};
-    const children  = {};
+    const byId = {};
+    const children = {};
     const parents = {};
+    const outgoing = {};
     const hasParent = new Set();
 
     nodes.forEach(n => {
+      if (!n || n.id == null) return;
       byId[n.id] = n;
       children[n.id] = [];
       parents[n.id] = [];
+      outgoing[n.id] = [];
     });
 
     links.forEach(l => {
       const sid = typeof l.source === 'object' ? l.source.id : l.source;
       const tid = typeof l.target === 'object' ? l.target.id : l.target;
-      if (byId[sid] && byId[tid]) {
-        children[sid].push(tid);
-        parents[tid].push(sid);
-        hasParent.add(tid);
+      if (!Object.prototype.hasOwnProperty.call(byId, sid) || !Object.prototype.hasOwnProperty.call(byId, tid)) {
+        return;
       }
+      if (outgoing[sid].indexOf(tid) === -1) {
+        outgoing[sid].push(tid);
+      }
+      if (parents[tid].indexOf(sid) === -1) {
+        parents[tid].push(sid);
+      }
+      hasParent.add(tid);
     });
 
-    /* roots = nodes that are never a target */
-    let roots = nodes.filter(n => !hasParent.has(n.id));
-    if (!roots.length) roots = nodes.slice(0, 1);
+    Object.keys(outgoing).forEach((id) => {
+      children[id] = outgoing[id].slice();
+    });
+
+    const roots = [];
+    const visited = new Set();
+
+    function addComponentRoot(startId) {
+      if (!Object.prototype.hasOwnProperty.call(byId, startId) || visited.has(startId)) {
+        return;
+      }
+
+      roots.push(byId[startId]);
+      visited.add(startId);
+
+      const stack = [startId];
+      while (stack.length) {
+        const currentId = stack.pop();
+        const nextIds = outgoing[currentId] || [];
+
+        nextIds.forEach((childId) => {
+          if (visited.has(childId)) return;
+          visited.add(childId);
+          stack.push(childId);
+        });
+      }
+    }
+
+    const candidateRoots = nodes
+      .filter(n => n && n.id != null && !hasParent.has(n.id))
+      .map(n => n.id);
+    candidateRoots.forEach(addComponentRoot);
+
+    // Ensure every disconnected or fully cyclic component gets represented.
+    nodes.forEach((n) => {
+      if (!n || n.id == null) return;
+      addComponentRoot(n.id);
+    });
 
     return { byId, children, parents, roots };
   }
@@ -275,9 +318,8 @@
         childBox.dataset.childrenRendered = '1';
         kids.forEach(cid => {
           const childNode = nodeMap[cid];
-          if (childNode) {
-            childBox.appendChild(renderNode(childNode, childrenMap, depth + 1));
-          }
+          if (!childNode) return;
+          childBox.appendChild(renderNode(childNode, childrenMap, depth + 1));
         });
       };
       childBox.__renderChildrenOnce = renderChildrenOnce;
