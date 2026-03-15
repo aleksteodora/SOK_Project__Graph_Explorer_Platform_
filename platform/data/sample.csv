@@ -1,0 +1,7 @@
+id,type,name,parent_id,ip,port,language,version,queue,db_type
+1,Server,Web Server,,192.168.1.1,8080,,,,
+2,Database,PostgreSQL,,,5432,,,, PostgreSQL
+3,Cache,Redis,2,,6379,,,,Redis
+4,API,REST API,1,,8000,Python,3.11,,
+5,Worker,Task Worker,4,,,Python,,celery,
+6,MessageQueue,RabbitMQ,5,,5672,,,,

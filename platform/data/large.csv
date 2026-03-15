@@ -1,0 +1,201 @@
+id,name,role,department,city,skill,salary,age,parent_id
+1,Person_1,Manager,Marketing,Novi Sad,Java,30317,23,
+2,Person_2,Lead,Sales,Nis,SQL,30634,24,1
+3,Person_3,Senior,Finance,Kragujevac,React,30951,25,2
+4,Person_4,Junior,HR,Subotica,Docker,31268,26,3
+5,Person_5,Intern,Operations,Zrenjanin,AWS,31585,27,4
+6,Person_6,Specialist,Research,Pancevo,ML,31902,28,5
+7,Person_7,Analyst,Support,Cacak,Agile,32219,29,4
+8,Person_8,Architect,Legal,Leskovac,DevOps,32536,30,7
+9,Person_9,Coordinator,Design,Kraljevo,GraphQL,32853,31,2
+10,Person_10,Director,Engineering,Belgrade,TypeScript,33170,32,9
+11,Person_11,Manager,Marketing,Novi Sad,Rust,33487,33,10
+12,Person_12,Lead,Sales,Nis,Go,33804,34,1
+13,Person_13,Senior,Finance,Kragujevac,Kubernetes,34121,35,12
+14,Person_14,Junior,HR,Subotica,Python,34438,36,13
+15,Person_15,Intern,Operations,Zrenjanin,Java,34755,37,14
+16,Person_16,Specialist,Research,Pancevo,SQL,35072,38,15
+17,Person_17,Analyst,Support,Cacak,React,35389,39,12
+18,Person_18,Architect,Legal,Leskovac,Docker,35706,40,17
+19,Person_19,Coordinator,Design,Kraljevo,AWS,36023,41,18
+20,Person_20,Director,Engineering,Belgrade,ML,36340,42,17
+21,Person_21,Manager,Marketing,Novi Sad,Agile,36657,43,20
+22,Person_22,Lead,Sales,Nis,DevOps,36974,44,21
+23,Person_23,Senior,Finance,Kragujevac,GraphQL,37291,45,20
+24,Person_24,Junior,HR,Subotica,TypeScript,37608,46,17
+25,Person_25,Intern,Operations,Zrenjanin,Rust,37925,47,24
+26,Person_26,Specialist,Research,Pancevo,Go,38242,48,1
+27,Person_27,Analyst,Support,Cacak,Kubernetes,38559,49,26
+28,Person_28,Architect,Legal,Leskovac,Python,38876,50,27
+29,Person_29,Coordinator,Design,Kraljevo,Java,39193,51,28
+30,Person_30,Director,Engineering,Belgrade,SQL,39510,52,28
+31,Person_31,Manager,Marketing,Novi Sad,React,39827,53,30
+32,Person_32,Lead,Sales,Nis,Docker,40144,54,27
+33,Person_33,Senior,Finance,Kragujevac,AWS,40461,55,32
+34,Person_34,Junior,HR,Subotica,ML,40778,56,33
+35,Person_35,Intern,Operations,Zrenjanin,Agile,41095,57,32
+36,Person_36,Specialist,Research,Pancevo,DevOps,41412,58,32
+37,Person_37,Analyst,Support,Cacak,GraphQL,41729,59,36
+38,Person_38,Architect,Legal,Leskovac,TypeScript,42046,60,36
+39,Person_39,Coordinator,Design,Kraljevo,Rust,42363,61,26
+40,Person_40,Director,Engineering,Belgrade,Go,42680,22,39
+41,Person_41,Manager,Marketing,Novi Sad,Kubernetes,42997,23,40
+42,Person_42,Lead,Sales,Nis,Python,43314,24,40
+43,Person_43,Senior,Finance,Kragujevac,Java,43631,25,1
+44,Person_44,Junior,HR,Subotica,SQL,43948,26,43
+45,Person_45,Intern,Operations,Zrenjanin,React,44265,27,44
+46,Person_46,Specialist,Research,Pancevo,Docker,44582,28,45
+47,Person_47,Analyst,Support,Cacak,AWS,44899,29,45
+48,Person_48,Architect,Legal,Leskovac,ML,45216,30,43
+49,Person_49,Coordinator,Design,Kraljevo,Agile,45533,31,48
+50,Person_50,Director,Engineering,Belgrade,DevOps,45850,32,49
+51,Person_51,Manager,Marketing,Novi Sad,GraphQL,46167,33,48
+52,Person_52,Lead,Sales,Nis,TypeScript,46484,34,51
+53,Person_53,Senior,Finance,Kragujevac,Rust,46801,35,43
+54,Person_54,Junior,HR,Subotica,Go,47118,36,53
+55,Person_55,Intern,Operations,Zrenjanin,Kubernetes,47435,37,54
+56,Person_56,Specialist,Research,Pancevo,Python,47752,38,53
+57,Person_57,Analyst,Support,Cacak,Java,48069,39,56
+58,Person_58,Architect,Legal,Leskovac,SQL,48386,40,
+59,Person_59,Coordinator,Design,Kraljevo,React,48703,41,58
+60,Person_60,Director,Engineering,Belgrade,Docker,49020,42,59
+61,Person_61,Manager,Marketing,Novi Sad,AWS,49337,43,60
+62,Person_62,Lead,Sales,Nis,ML,49654,44,61
+63,Person_63,Senior,Finance,Kragujevac,Agile,49971,45,61
+64,Person_64,Junior,HR,Subotica,DevOps,50288,46,59
+65,Person_65,Intern,Operations,Zrenjanin,GraphQL,50605,47,64
+66,Person_66,Specialist,Research,Pancevo,TypeScript,50922,48,65
+67,Person_67,Analyst,Support,Cacak,Rust,51239,49,64
+68,Person_68,Architect,Legal,Leskovac,Go,51556,50,67
+69,Person_69,Coordinator,Design,Kraljevo,Kubernetes,51873,51,64
+70,Person_70,Director,Engineering,Belgrade,Python,52190,52,69
+71,Person_71,Manager,Marketing,Novi Sad,Java,52507,53,70
+72,Person_72,Lead,Sales,Nis,SQL,52824,54,59
+73,Person_73,Senior,Finance,Kragujevac,React,53141,55,72
+74,Person_74,Junior,HR,Subotica,Docker,53458,56,73
+75,Person_75,Intern,Operations,Zrenjanin,AWS,53775,57,73
+76,Person_76,Specialist,Research,Pancevo,ML,54092,58,72
+77,Person_77,Analyst,Support,Cacak,Agile,54409,59,76
+78,Person_78,Architect,Legal,Leskovac,DevOps,54726,60,58
+79,Person_79,Coordinator,Design,Kraljevo,GraphQL,55043,61,78
+80,Person_80,Director,Engineering,Belgrade,TypeScript,55360,22,79
+81,Person_81,Manager,Marketing,Novi Sad,Rust,55677,23,80
+82,Person_82,Lead,Sales,Nis,Go,55994,24,78
+83,Person_83,Senior,Finance,Kragujevac,Kubernetes,56311,25,82
+84,Person_84,Junior,HR,Subotica,Python,56628,26,83
+85,Person_85,Intern,Operations,Zrenjanin,Java,56945,27,84
+86,Person_86,Specialist,Research,Pancevo,SQL,57262,28,83
+87,Person_87,Analyst,Support,Cacak,React,57579,29,82
+88,Person_88,Architect,Legal,Leskovac,Docker,57896,30,87
+89,Person_89,Coordinator,Design,Kraljevo,AWS,58213,31,88
+90,Person_90,Director,Engineering,Belgrade,ML,58530,32,87
+91,Person_91,Manager,Marketing,Novi Sad,Agile,58847,33,58
+92,Person_92,Lead,Sales,Nis,DevOps,59164,34,91
+93,Person_93,Senior,Finance,Kragujevac,GraphQL,59481,35,92
+94,Person_94,Junior,HR,Subotica,TypeScript,59798,36,93
+95,Person_95,Intern,Operations,Zrenjanin,Rust,60115,37,94
+96,Person_96,Specialist,Research,Pancevo,Go,60432,38,93
+97,Person_97,Analyst,Support,Cacak,Kubernetes,60749,39,91
+98,Person_98,Architect,Legal,Leskovac,Python,61066,40,97
+99,Person_99,Coordinator,Design,Kraljevo,Java,61383,41,98
+100,Person_100,Director,Engineering,Belgrade,SQL,61700,42,98
+101,Person_101,Manager,Marketing,Novi Sad,React,62017,43,97
+102,Person_102,Lead,Sales,Nis,Docker,62334,44,101
+103,Person_103,Senior,Finance,Kragujevac,AWS,62651,45,101
+104,Person_104,Junior,HR,Subotica,ML,62968,46,97
+105,Person_105,Intern,Operations,Zrenjanin,Agile,63285,47,104
+106,Person_106,Specialist,Research,Pancevo,DevOps,63602,48,91
+107,Person_107,Analyst,Support,Cacak,GraphQL,63919,49,106
+108,Person_108,Architect,Legal,Leskovac,TypeScript,64236,50,107
+109,Person_109,Coordinator,Design,Kraljevo,Rust,64553,51,
+110,Person_110,Director,Engineering,Belgrade,Go,64870,52,109
+111,Person_111,Manager,Marketing,Novi Sad,Kubernetes,65187,53,110
+112,Person_112,Lead,Sales,Nis,Python,65504,54,111
+113,Person_113,Senior,Finance,Kragujevac,Java,65821,55,112
+114,Person_114,Junior,HR,Subotica,SQL,66138,56,112
+115,Person_115,Intern,Operations,Zrenjanin,React,66455,57,111
+116,Person_116,Specialist,Research,Pancevo,Docker,66772,58,115
+117,Person_117,Analyst,Support,Cacak,AWS,67089,59,115
+118,Person_118,Architect,Legal,Leskovac,ML,67406,60,111
+119,Person_119,Coordinator,Design,Kraljevo,Agile,67723,61,118
+120,Person_120,Director,Engineering,Belgrade,DevOps,68040,22,110
+121,Person_121,Manager,Marketing,Novi Sad,GraphQL,68357,23,120
+122,Person_122,Lead,Sales,Nis,TypeScript,68674,24,121
+123,Person_123,Senior,Finance,Kragujevac,Rust,68991,25,121
+124,Person_124,Junior,HR,Subotica,Go,69308,26,109
+125,Person_125,Intern,Operations,Zrenjanin,Kubernetes,69625,27,124
+126,Person_126,Specialist,Research,Pancevo,Python,69942,28,125
+127,Person_127,Analyst,Support,Cacak,Java,70259,29,126
+128,Person_128,Architect,Legal,Leskovac,SQL,70576,30,125
+129,Person_129,Coordinator,Design,Kraljevo,React,70893,31,128
+130,Person_130,Director,Engineering,Belgrade,Docker,71210,32,128
+131,Person_131,Manager,Marketing,Novi Sad,AWS,71527,33,124
+132,Person_132,Lead,Sales,Nis,ML,71844,34,131
+133,Person_133,Senior,Finance,Kragujevac,Agile,72161,35,132
+134,Person_134,Junior,HR,Subotica,DevOps,72478,36,131
+135,Person_135,Intern,Operations,Zrenjanin,GraphQL,72795,37,134
+136,Person_136,Specialist,Research,Pancevo,TypeScript,73112,38,134
+137,Person_137,Analyst,Support,Cacak,Rust,73429,39,131
+138,Person_138,Architect,Legal,Leskovac,Go,73746,40,137
+139,Person_139,Coordinator,Design,Kraljevo,Kubernetes,74063,41,138
+140,Person_140,Director,Engineering,Belgrade,Python,74380,42,124
+141,Person_141,Manager,Marketing,Novi Sad,Java,74697,43,140
+142,Person_142,Lead,Sales,Nis,SQL,75014,44,141
+143,Person_143,Senior,Finance,Kragujevac,React,75331,45,
+144,Person_144,Junior,HR,Subotica,Docker,75648,46,143
+145,Person_145,Intern,Operations,Zrenjanin,AWS,75965,47,144
+146,Person_146,Specialist,Research,Pancevo,ML,76282,48,145
+147,Person_147,Analyst,Support,Cacak,Agile,76599,49,146
+148,Person_148,Architect,Legal,Leskovac,DevOps,76916,50,146
+149,Person_149,Coordinator,Design,Kraljevo,GraphQL,77233,51,144
+150,Person_150,Director,Engineering,Belgrade,TypeScript,77550,52,149
+151,Person_151,Manager,Marketing,Novi Sad,Rust,77867,53,150
+152,Person_152,Lead,Sales,Nis,Go,78184,54,151
+153,Person_153,Senior,Finance,Kragujevac,Kubernetes,78501,55,149
+154,Person_154,Junior,HR,Subotica,Python,78818,56,153
+155,Person_155,Intern,Operations,Zrenjanin,Java,79135,57,154
+156,Person_156,Specialist,Research,Pancevo,SQL,79452,58,143
+157,Person_157,Analyst,Support,Cacak,React,79769,59,156
+158,Person_158,Architect,Legal,Leskovac,Docker,80086,60,157
+159,Person_159,Coordinator,Design,Kraljevo,AWS,80403,61,158
+160,Person_160,Director,Engineering,Belgrade,ML,80720,22,159
+161,Person_161,Manager,Marketing,Novi Sad,Agile,81037,23,156
+162,Person_162,Lead,Sales,Nis,DevOps,81354,24,161
+163,Person_163,Senior,Finance,Kragujevac,GraphQL,81671,25,162
+164,Person_164,Junior,HR,Subotica,TypeScript,81988,26,163
+165,Person_165,Intern,Operations,Zrenjanin,Rust,82305,27,161
+166,Person_166,Specialist,Research,Pancevo,Go,82622,28,165
+167,Person_167,Analyst,Support,Cacak,Kubernetes,82939,29,165
+168,Person_168,Architect,Legal,Leskovac,Python,83256,30,156
+169,Person_169,Coordinator,Design,Kraljevo,Java,83573,31,168
+170,Person_170,Director,Engineering,Belgrade,SQL,83890,32,169
+171,Person_171,Manager,Marketing,Novi Sad,React,84207,33,168
+172,Person_172,Lead,Sales,Nis,Docker,84524,34,171
+173,Person_173,Senior,Finance,Kragujevac,AWS,84841,35,171
+174,Person_174,Junior,HR,Subotica,ML,85158,36,168
+175,Person_175,Intern,Operations,Zrenjanin,Agile,85475,37,174
+176,Person_176,Specialist,Research,Pancevo,DevOps,85792,38,174
+177,Person_177,Analyst,Support,Cacak,GraphQL,86109,39,143
+178,Person_178,Architect,Legal,Leskovac,TypeScript,86426,40,177
+179,Person_179,Coordinator,Design,Kraljevo,Rust,86743,41,178
+180,Person_180,Director,Engineering,Belgrade,Go,87060,42,179
+181,Person_181,Manager,Marketing,Novi Sad,Kubernetes,87377,43,177
+182,Person_182,Lead,Sales,Nis,Python,87694,44,181
+183,Person_183,Senior,Finance,Kragujevac,Java,88011,45,182
+184,Person_184,Junior,HR,Subotica,SQL,88328,46,181
+185,Person_185,Intern,Operations,Zrenjanin,React,88645,47,184
+186,Person_186,Specialist,Research,Pancevo,Docker,88962,48,185
+187,Person_187,Analyst,Support,Cacak,AWS,89279,49,181
+188,Person_188,Architect,Legal,Leskovac,ML,89596,50,187
+189,Person_189,Coordinator,Design,Kraljevo,Agile,89913,51,188
+190,Person_190,Director,Engineering,Belgrade,DevOps,90230,52,
+191,Person_191,Manager,Marketing,Novi Sad,GraphQL,90547,53,190
+192,Person_192,Lead,Sales,Nis,TypeScript,90864,54,191
+193,Person_193,Senior,Finance,Kragujevac,Rust,91181,55,192
+194,Person_194,Junior,HR,Subotica,Go,91498,56,193
+195,Person_195,Intern,Operations,Zrenjanin,Kubernetes,91815,57,194
+196,Person_196,Specialist,Research,Pancevo,Python,92132,58,191
+197,Person_197,Analyst,Support,Cacak,Java,92449,59,196
+198,Person_198,Architect,Legal,Leskovac,SQL,92766,60,197
+199,Person_199,Coordinator,Design,Kraljevo,React,93083,61,196
+200,Person_200,Director,Engineering,Belgrade,Docker,93400,22,199
