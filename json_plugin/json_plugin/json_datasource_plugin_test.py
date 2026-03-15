@@ -111,6 +111,92 @@ TEST_JSON_SELF_REFERENCE = {
     "value": 10
 }
 
+TEST_JSON_CYCLIC = {
+    "id": "network",
+    "children": [
+        {
+            "id": "server:1",
+            "type": "Server",
+            "ip": "192.168.1.1",
+            "port": 8080,
+            "connectsTo": "2",
+            "connections": "5"
+        },
+        {
+            "id": "database:2",
+            "type": "Database",
+            "dbType": "PostgreSQL",
+            "port": 5432,
+            "replicatesTo": "3",
+            "backupTarget": "1"
+        },
+        {
+            "id": "cache:3",
+            "type": "Cache",
+            "cacheType": "Redis",
+            "port": 6379,
+            "dependsOn": "2",
+            "peer": "1"
+        },
+        {
+            "id": "api:4",
+            "type": "API",
+            "name": "REST API",
+            "language": "Python",
+            "calls": "5"
+        },
+        {
+            "id": "worker:5",
+            "type": "Worker",
+            "name": "Task Worker",
+            "language": "Python",
+            "queue": "celery",
+            "registeredIn": "4",
+            "task": "6"
+        },
+        {
+            "id": "mq:6",
+            "type": "MessageQueue",
+            "name": "RabbitMQ",
+            "mqType": "AMQP",
+            "port": 5672,
+            "usedBy": "5",
+            "consumesFrom": "1"
+        },
+        {
+            "id": "monitor:7",
+            "type": "Monitor",
+            "name": "Self Monitor",
+            "interval": 30,
+            "selfRef": "7",
+            "monitorTarget": "7"
+        },
+        {
+            "id": "loadbalancer:8",
+            "type": "LoadBalancer",
+            "name": "HAProxy",
+            "routesTo": "9",
+            "backend": "10"
+        },
+        {
+            "id": "webserver:9",
+            "type": "WebServer",
+            "name": "Nginx",
+            "port": 80,
+            "proxiesTo": "4",
+            "upstream": "8"
+        },
+        {
+            "id": "appserver:10",
+            "type": "AppServer",
+            "name": "Gunicorn",
+            "workers": 4,
+            "connectsTo": "8",
+            "app": "9"
+        }
+    ]
+}
+
 def make_graph(json_data):
     mock_file = mock_open(read_data=json.dumps(json_data))
     with patch("builtins.open", mock_file):
@@ -282,11 +368,43 @@ class TestJsonDataSourceEdgeCases(unittest.TestCase):
         self.assertEqual(len(nodes), 1)
         self.assertEqual(len(edges), 0)
 
-    def test_self_reference_no_cycle(self):
+    def test_self_reference_creates_self_loop(self):
         graph = make_graph(TEST_JSON_SELF_REFERENCE)
         node = graph.get_node("self")
         edges = list(graph.edges())
-        self.assertEqual(len(edges), 0)
+        self.assertEqual(len(edges), 1)
+        self.assertTrue(any(e.source == node and e.target == node for e in edges))
+
+    def test_suffix_alias_reference_creates_edge(self):
+        json_data = {
+            "id": "root",
+            "children": [
+                {"id": "server:1", "connectsTo": "2"},
+                {"id": "database:2", "type": "Database"}
+            ]
+        }
+        graph = make_graph(json_data)
+
+        server = graph.get_node("server:1")
+        database = graph.get_node("database:2")
+        edges = list(graph.edges())
+        self.assertTrue(any(e.source == server and e.target == database for e in edges))
+
+    def test_cyclic_graph_edges_from_scalar_references(self):
+        graph = make_graph(TEST_JSON_CYCLIC)
+        nodes = list(graph.nodes())
+        edges = list(graph.edges())
+
+        self.assertEqual(len(nodes), 11)
+        self.assertEqual(len(edges), 29)
+
+        monitor = graph.get_node("monitor:7")
+        self_loops = [e for e in edges if e.source == monitor and e.target == monitor]
+        self.assertEqual(len(self_loops), 2)
+
+        server = graph.get_node("server:1")
+        database = graph.get_node("database:2")
+        self.assertTrue(any(e.source == server and e.target == database for e in edges))
 
     def test_non_last_key_as_children_ignored(self):
         json_data = {

@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 from api.model.edge import Edge
 from api.model.graph import Graph
@@ -53,7 +53,8 @@ class JsonDataSource(DataSourcePlugin):
     1. Each object must have a non-empty "id".
     2. The LAST key in the object, if it's a list of objects, is treated as children
        and creates directed edges parent -> child. The key name does not matter.
-    3. All other primitive fields are node attributes.
+        3. Scalar fields are stored as attributes and are also treated as references if
+             they match another node ID (or an ID suffix alias like "server:1" -> "1").
     4. String attributes are parsed with parse_attribute_value (int/float/date fallback).
     5. Allowed attribute types: int, float, str, date (ISO format, e.g., 2026-03-12).
     6. None, empty strings, and nested objects/lists (except children) are ignored as attributes.
@@ -100,6 +101,9 @@ class JsonDataSource(DataSourcePlugin):
         self._graph: Graph = Graph("why_does_the_graph_need_an_id", "json_graph")
         self._node_counter = 1
         self._edge_counter = 1
+        self._node_reference_map: Dict[Node, List[str]] = {}
+        self._id_alias_map: Dict[str, Node] = {}
+        self._ambiguous_aliases: Set[str] = set()
 
     def get_name(self) -> str:
         """
@@ -143,6 +147,9 @@ class JsonDataSource(DataSourcePlugin):
         self._graph = Graph(params["file_name"], "json_graph")
         self._node_counter = 1
         self._edge_counter = 1
+        self._node_reference_map = {}
+        self._id_alias_map = {}
+        self._ambiguous_aliases = set()
 
         file_path = _resolve_platform_data_file(params["file_name"])
 
@@ -153,6 +160,7 @@ class JsonDataSource(DataSourcePlugin):
             raise ValueError("Root JSON value must be an object representing a node.")
 
         self._build_node_and_add_to_graph(data)
+        self._connect_references()
         return self._graph
 
     def _build_node_and_add_to_graph(self, json_node: Dict[str, Any]) -> Node:
@@ -183,6 +191,7 @@ class JsonDataSource(DataSourcePlugin):
 
         node = Node(node_id)
         self._graph.add_node(node)
+        self._register_node_aliases(node)
 
         keys = list(json_node.keys())
         last_key = keys[-1] if keys else None
@@ -199,13 +208,21 @@ class JsonDataSource(DataSourcePlugin):
             children = last_value
             children_key = last_key
 
+        reference_tokens: List[str] = []
+
         for key, value in json_node.items():
             if key in {"id"} or key == children_key:
                 continue
+
+            reference_tokens.extend(self._extract_reference_tokens(value))
+
             converted = self._convert_attribute_value(value)
             if converted is None:
                 continue
             node.set_attribute(key, converted)
+
+        if reference_tokens:
+            self._node_reference_map[node] = reference_tokens
 
         for child_json in children:
             child_node = self._build_node_and_add_to_graph(child_json)
@@ -262,6 +279,71 @@ class JsonDataSource(DataSourcePlugin):
         if isinstance(value, (dict, list)):
             return None
         return str(value)
+
+    def _register_node_aliases(self, node: Node) -> None:
+        aliases = {node.node_id}
+        if ":" in node.node_id:
+            suffix = node.node_id.rsplit(":", 1)[-1].strip()
+            if suffix:
+                aliases.add(suffix)
+
+        for alias in aliases:
+            if alias in self._ambiguous_aliases:
+                continue
+
+            existing = self._id_alias_map.get(alias)
+            if existing is None or existing == node:
+                self._id_alias_map[alias] = node
+                continue
+
+            self._id_alias_map.pop(alias, None)
+            self._ambiguous_aliases.add(alias)
+
+    def _extract_reference_tokens(self, value: Any) -> List[str]:
+        if value is None or isinstance(value, bool):
+            return []
+
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return []
+            return [part.strip() for part in stripped.split(",") if part.strip()]
+
+        if isinstance(value, dict):
+            reference_tokens: List[str] = []
+            for wrapper_key in ("ref", "refs"):
+                if wrapper_key not in value:
+                    continue
+
+                wrapper_value = value.get(wrapper_key)
+                if isinstance(wrapper_value, list):
+                    for item in wrapper_value:
+                        reference_tokens.extend(self._extract_reference_tokens(item))
+                else:
+                    reference_tokens.extend(self._extract_reference_tokens(wrapper_value))
+
+            return reference_tokens
+
+        return []
+
+    def _resolve_reference_node(self, reference_token: str):
+        token = str(reference_token).strip()
+        if not token:
+            return None
+
+        direct_match = self._graph.get_node(token)
+        if direct_match is not None:
+            return direct_match
+
+        return self._id_alias_map.get(token)
+
+    def _connect_references(self) -> None:
+        for source_node, reference_tokens in self._node_reference_map.items():
+            for reference_token in reference_tokens:
+                target_node = self._resolve_reference_node(reference_token)
+                if target_node is None:
+                    continue
+                self._build_edge_and_add_to_graph(source_node, target_node)
 
     def _build_edge_and_add_to_graph(self, src: Node, des: Node) -> Edge:
         """
