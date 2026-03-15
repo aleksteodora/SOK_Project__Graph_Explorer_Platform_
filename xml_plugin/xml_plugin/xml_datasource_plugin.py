@@ -60,7 +60,7 @@ class XmlDataSource(DataSourcePlugin):
         self._node_counter = 1
         self._edge_counter = 1
         self._file_id_node_map: Dict[str, Node] = {}
-        self._node_file_id_reference_map: Dict[Node, str] = {}
+        self._node_file_id_reference_map: Dict[Node, List[str]] = {}
 
     def get_name(self) -> str:
         """
@@ -129,7 +129,9 @@ class XmlDataSource(DataSourcePlugin):
             Node: The created Node object corresponding to this XML element.
         """
         file_id = xml_node.attrib.get("id")
-        referenced_id = xml_node.attrib.get("ref")
+        referenced_ids = None
+        if xml_node.attrib.get("ref"):
+            referenced_ids = [r.strip() for r in xml_node.attrib.get("ref").split(",")]
 
         node = Node(str(self._node_counter))
         node.set_attribute("name", xml_node.tag)
@@ -147,8 +149,8 @@ class XmlDataSource(DataSourcePlugin):
         if file_id:
             self._file_id_node_map[file_id] = node
 
-        if referenced_id:
-            self._node_file_id_reference_map[node] = referenced_id
+        if referenced_ids:
+            self._node_file_id_reference_map[node] = referenced_ids
 
         return node
 
@@ -176,7 +178,8 @@ class XmlDataSource(DataSourcePlugin):
         and creates an edge from the referencing node to the target node.
         """
         for parent in self._node_file_id_reference_map.keys():
-            child = self._file_id_node_map.get(self._node_file_id_reference_map[parent])
-            if not child:
-                continue
-            self._build_edge_and_add_to_graph(parent, child)
+            for ref in self._node_file_id_reference_map[parent]:
+                child = self._file_id_node_map.get(ref)
+                if not child:
+                    continue
+                self._build_edge_and_add_to_graph(parent, child)
