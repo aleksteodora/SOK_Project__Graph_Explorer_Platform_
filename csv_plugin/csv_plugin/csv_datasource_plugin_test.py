@@ -3,7 +3,7 @@ import io
 import unittest
 from unittest.mock import mock_open, patch
 
-from csv_plugin.csv_datasource_plugin import CsvDataSource
+from csv_plugin.csv_plugin.csv_datasource_plugin import CsvDataSource
 
 
 # ---------------------------------------------------------------------------

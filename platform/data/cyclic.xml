@@ -1,0 +1,11 @@
+<graph>
+    <node id="1">
+        <name>first_node</name>
+        <node>
+            <name>second_node</name>
+            <node ref="1">
+                <name>third_node</name>
+            </node>
+        </node>
+    </node>
+</graph>
