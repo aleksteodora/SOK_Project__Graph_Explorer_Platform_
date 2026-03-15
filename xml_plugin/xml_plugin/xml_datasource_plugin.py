@@ -3,11 +3,11 @@ from typing import List, Dict, Any
 import os, sys
 import xml.etree.ElementTree as et
 
-from api.model.node import parse_attribute_value
-from api.plugin.plugin import DataSourcePlugin, PluginParameter
-from api.model.graph import Graph
-from api.model.node import Node
-from api.model.edge import Edge
+from api import parse_attribute_value
+from api import DataSourcePlugin, PluginParameter
+from api import Graph
+from api import Node
+from api import Edge
 
 
 class XmlDataSource(DataSourcePlugin):

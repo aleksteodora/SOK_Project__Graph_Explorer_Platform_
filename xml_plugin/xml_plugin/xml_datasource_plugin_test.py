@@ -260,10 +260,12 @@ class TestXmlDataSourceEdges(unittest.TestCase):
         graph = make_graph(TEST_XML_SIBLING_REFS)
         edges = list(graph.edges())
         c_node = next(node for node in graph.nodes() if node.get_attribute("name") == "C")
+        a_node = next(node for node in graph.nodes() if node.get_attribute("name") == "A")
+        b_node = next(node for node in graph.nodes() if node.get_attribute("name") == "B")
         ref_edges = [e for e in edges if e.source == c_node]
-        ref_targets = {e.target.node_id for e in ref_edges}
-        self.assertIn("1", ref_targets)
-        self.assertIn("2", ref_targets)
+        ref_targets = {e.target for e in ref_edges}
+        self.assertIn(a_node, ref_targets)
+        self.assertIn(b_node, ref_targets)
 
     def test_edge_ids_are_unique(self):
         graph = make_graph(TEST_XML)
@@ -279,7 +281,7 @@ class TestXmlDataSourceEdges(unittest.TestCase):
 class TestXmlDataSourceReturnType(unittest.TestCase):
 
     def test_load_returns_graph(self):
-        from api.model.graph import Graph
+        from api import Graph
         graph = make_graph(TEST_XML)
         self.assertIsInstance(graph, Graph)
 
