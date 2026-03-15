@@ -125,9 +125,12 @@
   filter: drop-shadow(0 2px 12px rgba(201,90,0,.5));
 }
 
-#canvas line.link, #canvas .gv-link, #canvas .edge {
+#canvas line.link, #canvas line.edge,
+#canvas path.link, #canvas path.edge,
+#canvas .gv-link, #canvas .edge {
   stroke: #c0a070 !important;
   stroke-width: 1.5 !important;
+  fill: none !important;
   pointer-events: stroke;
   cursor: help;
 }
