@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, mock_open
 import json
-from json_plugin.json_datasource_plugin import JsonDataSource
+from json_plugin.json_plugin.json_datasource_plugin import JsonDataSource
 
 TEST_JSON = {
     "id": "root",
