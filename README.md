@@ -1,3 +1,8 @@
+![Python](https://img.shields.io/badge/Python-3.11+-blue)
+![Django](https://img.shields.io/badge/Django-green)
+![Flask](https://img.shields.io/badge/Flask-black)
+![D3.js](https://img.shields.io/badge/D3.js-orange)
+
 # Graph Explorer Platform
 
 A modular, plugin-based platform for parsing, modeling, visualizing, searching, and manipulating graph structures. Built with a clean plugin architecture that allows data sources and visualizers to be swapped or extended independently — the platform remains framework-agnostic and integrates with both Django and Flask.
