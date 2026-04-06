@@ -24,10 +24,10 @@ A modular, plugin-based platform for parsing, modeling, visualizing, searching, 
 
 ## Screenshots
 
-![Block Visualizer](screenshots/sok1)
-![Flask Block View](screenshots/sok2)
-![Search in Action](screenshots/sok3)
-![Simple Visualizer](screenshots/sok4)
+![Block Visualizer](screenshots/sok1.png)
+![Flask Block View](screenshots/sok2.png)
+![Search in Action](screenshots/sok3.png)
+![Simple Visualizer](screenshots/sok4.png)
 
 ## Tech Stack
 
