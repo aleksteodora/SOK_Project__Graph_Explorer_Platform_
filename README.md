@@ -24,10 +24,16 @@ A modular, plugin-based platform for parsing, modeling, visualizing, searching, 
 
 ## Screenshots
 
-![Block Visualizer](screenshots/sok1.png)
-![Flask Block View](screenshots/sok2.png)
-![Search in Action](screenshots/sok3.png)
-![Simple Visualizer](screenshots/sok4.png)
+<table>
+  <tr>
+    <td><img src="screenshots/sok1.png" width="480"/></td>
+    <td><img src="screenshots/sok2.png" width="480"/></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/sok3.png" width="480"/></td>
+    <td><img src="screenshots/sok4.png" width="480"/></td>
+  </tr>
+</table>
 
 ## Tech Stack
 
