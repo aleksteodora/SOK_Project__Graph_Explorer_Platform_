@@ -22,6 +22,13 @@ A modular, plugin-based platform for parsing, modeling, visualizing, searching, 
 
 ---
 
+## Screenshots
+
+![Block Visualizer](screenshots/sok1)
+![Flask Block View](screenshots/sok2)
+![Search in Action](screenshots/sok3)
+![Simple Visualizer](screenshots/sok4)
+
 ## Tech Stack
 
 - **Language**: Python 3.11+
